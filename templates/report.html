@@ -8,14 +8,12 @@
 
 <style>
 body{background:#f4f6f9}
-.card-box{border-radius:12px}
 </style>
 
 </head>
 
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
 <div class="container">
 <a class="navbar-brand fw-bold" href="/">Fatigue Tools</a>
@@ -32,28 +30,25 @@ body{background:#f4f6f9}
 
 <h3 class="mb-4">📊 Reporting Harian</h3>
 
-<!-- ========================= -->
-<!-- FORM -->
-<!-- ========================= -->
 <form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm">
 
 <div class="row g-3">
 
-<div class="col-md-3">
+<div class="col-md-4">
 <label>Tanggal</label>
 <input type="date" name="tanggal" class="form-control" required>
 </div>
 
-<div class="col-md-2">
+<div class="col-md-4">
 <label>Shift</label>
 <select name="shift" class="form-control">
-<option>1</option>
-<option>2</option>
-<option>3</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
 </select>
 </div>
 
-<div class="col-md-3">
+<div class="col-md-4">
 <label>Validated By</label>
 <input type="text" name="validated" class="form-control" required>
 </div>
@@ -70,17 +65,7 @@ body{background:#f4f6f9}
 </form>
 
 
-<!-- ========================= -->
-<!-- RESULT -->
-<!-- ========================= -->
-
-{% if hasil is string %}
-
-<div class="alert alert-warning mt-4">
-{{ hasil }}
-</div>
-
-{% elif hasil %}
+{% if hasil %}
 
 <div class="card mt-4 p-4 shadow-sm">
 
@@ -88,6 +73,11 @@ body{background:#f4f6f9}
 <h5>Preview</h5>
 <a href="/export" class="btn btn-success">Export Excel</a>
 </div>
+
+{% if hasil is string %}
+<div class="alert alert-warning">{{ hasil }}</div>
+
+{% else %}
 
 <div class="table-responsive">
 
@@ -103,10 +93,9 @@ body{background:#f4f6f9}
 <th>IP</th>
 <th>Alert</th>
 <th>OCR</th>
-<th>Feedback (Server)</th>
+<th>Feedback</th>
 <th>Shift</th>
 <th>Validated</th>
-<th>Video</th>
 </tr>
 </thead>
 
@@ -123,16 +112,23 @@ body{background:#f4f6f9}
 <td>{{ r[6] }}</td>
 <td>{{ r[7] }}</td>
 <td>{{ r[8] }}</td>
-<td>{{ r[11] }}</td>
-<td>{{ r[12] }}</td>
-<td><a href="{{ r[13] }}" target="_blank">Open</a></td>
+<td>{{ r[9] }}</td>
+<td>{{ r[10] }}</td>
 </tr>
 {% endfor %}
 
 </tbody>
+
 </table>
 
 </div>
+
+{% endif %}
 </div>
 
 {% endif %}
+
+</div>
+
+</body>
+</html>
