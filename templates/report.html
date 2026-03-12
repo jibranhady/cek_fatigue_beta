@@ -1,33 +1,181 @@
-<form method="post" class="card p-4 shadow-sm">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reporting Harian</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+background:#f4f6f9;
+}
+
+/* card lebih clean */
+.card{
+border:none;
+border-radius:14px;
+}
+
+/* textarea enak dipakai */
+textarea{
+resize:none;
+font-family:monospace;
+font-size:14px;
+}
+
+/* header style */
+.page-title{
+font-weight:700;
+letter-spacing:.3px;
+}
+
+/* tombol */
+.btn-primary{
+border-radius:8px;
+padding:10px 18px;
+font-weight:600;
+}
+
+/* table */
+.table{
+font-size:14px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark shadow-sm">
+<div class="container">
+
+<a class="navbar-brand fw-bold" href="/">Fatigue Tools</a>
+
+<div>
+<a href="/" class="btn btn-outline-light btn-sm">Bulk Check</a>
+<a href="/report" class="btn btn-warning btn-sm">Reporting</a>
+</div>
+
+</div>
+</nav>
+
+
+<div class="container mt-4">
+
+<h3 class="page-title mb-4">📊 Reporting Harian</h3>
+
+<!-- FORM -->
+<div class="card shadow-sm p-4 mb-4">
+
+<form method="post">
 
 <div class="row g-3">
 
 <div class="col-md-3">
-<label>Tanggal</label>
+<label class="form-label fw-semibold">Tanggal</label>
 <input type="date" name="tanggal" class="form-control" required>
 </div>
 
 <div class="col-md-3">
-<label>Shift</label>
-<select name="shift" class="form-control">
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
+<label class="form-label fw-semibold">Shift</label>
+<select name="shift" class="form-select">
+<option value="1">Shift 1</option>
+<option value="2">Shift 2</option>
+<option value="3">Shift 3</option>
 </select>
 </div>
 
 <div class="col-md-3">
-<label>Validated By</label>
+<label class="form-label fw-semibold">Validated By</label>
 <input type="text" name="validated" class="form-control" required>
 </div>
 
 <div class="col-md-12">
-<label>Paste URL Video (boleh banyak)</label>
-<textarea name="urls" class="form-control" rows="8"></textarea>
+<label class="form-label fw-semibold">Paste URL Video</label>
+
+<textarea name="urls" rows="7" class="form-control"
+placeholder="Paste banyak URL di sini...
+
+https://mh02file.../SLS30I614/CLOSEDEYES_20260310_003029/...
+https://mh02file.../SLS30I620/YAWNING_20260310_020011/..."></textarea>
+
+<div class="form-text">
+Tips: paste banyak URL sekaligus (1 baris 1 link)
 </div>
 
 </div>
 
-<button class="btn btn-primary mt-3">Generate</button>
+</div>
+
+<button class="btn btn-primary mt-3">🚀 Generate Reporting</button>
 
 </form>
+
+</div>
+
+
+<!-- HASIL -->
+{% if hasil %}
+
+<div class="card shadow-sm p-4">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+
+<h5 class="fw-bold mb-0">Preview Data</h5>
+
+<a href="/export" class="btn btn-success btn-sm">
+⬇ Export Excel
+</a>
+
+</div>
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-striped table-hover">
+
+<thead class="table-dark">
+<tr>
+<th>Tanggal</th>
+<th>PID</th>
+<th>Distrik</th>
+<th>SLS</th>
+<th>IP</th>
+<th>Alert</th>
+<th>Shift</th>
+<th>Validated</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in hasil %}
+<tr>
+<td>{{ r[0] }}</td>
+<td>{{ r[1] }}</td>
+<td>{{ r[2] }}</td>
+<td>{{ r[3] }}</td>
+<td>{{ r[4] }}</td>
+<td>{{ r[5] }}</td>
+<td>{{ r[8] }}</td>
+<td>{{ r[9] }}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+{% endif %}
+
+</div>
+
+</body>
+</html>
