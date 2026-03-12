@@ -20,7 +20,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (ASLI LU, GA DIUBAH)
+# ✅ MENU 1 — BULK (ASLI, GA DIUBAH)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -119,7 +119,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORT (DEBUG FINAL)
+# ✅ MENU 2 — REPORT (FINAL STABLE)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -140,16 +140,16 @@ def report():
 
         df = pd.read_excel(file)
 
-        print("KOLOM FILE:", df.columns.tolist())
-
-        # AUTO DETECT KOLOM
+        # =========================
+        # DETECT KOLOM URL
+        # =========================
         url_col = None
         for c in df.columns:
             if "video" in str(c).lower():
                 url_col = c
 
         if not url_col:
-            return render_template("report.html", hasil="❌ Kolom URL tidak ketemu")
+            return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
 
         rows = []
         total_url = 0
@@ -172,13 +172,12 @@ def report():
                 total_url += 1
 
                 parts = url.split("/")
-
                 if len(parts) < 3:
                     continue
 
                 sls = parts[-3].strip().upper()
-
                 folder = parts[-2]
+
                 folder_clean = folder.replace(".mp4", "")
                 parts_folder = folder_clean.split("_")
 
@@ -189,6 +188,7 @@ def report():
                 tanggal = parts_folder[1]
                 jam = parts_folder[2]
 
+                # 🔥 FIX WAKTU (MINUS 1 JAM + IKUT TANGGAL)
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
@@ -198,7 +198,6 @@ def report():
                 match = df_raw[df_raw["deviceid_clean"] == sls]
 
                 if match.empty:
-                    print("TIDAK MATCH:", sls)
                     continue
 
                 total_match += 1
@@ -222,11 +221,8 @@ def report():
                     url
                 ])
 
-            except Exception as e:
-                print("ERROR:", e)
-
-        print("TOTAL URL:", total_url)
-        print("TOTAL MATCH:", total_match)
+            except:
+                continue
 
         if not rows:
             return render_template(
@@ -234,13 +230,17 @@ def report():
                 hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
             )
 
-        rows.sort(key=lambda x: x[1].split("_")[-1])
+        # 🔥 SORT AMAN
+        try:
+            rows.sort(key=lambda x: x[1].split("_")[-1])
+        except:
+            pass
 
         hasil = rows
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-
+    
 
 # ==================================================
 # EXPORT
