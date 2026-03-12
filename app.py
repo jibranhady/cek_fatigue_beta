@@ -119,7 +119,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORT (FINAL STABLE)
+# ✅ REPORT FINAL (STABLE FIX)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -158,7 +158,6 @@ def report():
         for _, r in df.iterrows():
 
             try:
-
                 url_val = r[url_col]
 
                 if pd.isna(url_val):
@@ -188,7 +187,7 @@ def report():
                 tanggal = parts_folder[1]
                 jam = parts_folder[2]
 
-                # 🔥 FIX WAKTU (MINUS 1 JAM + IKUT TANGGAL)
+                # 🔥 FIX WAKTU
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
@@ -224,35 +223,25 @@ def report():
             except:
                 continue
 
-        if not rows:
-            return render_template(
-                "report.html",
-                hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
-            )
+        # =========================
+        # OUTPUT FINAL
+        # =========================
+        if rows:
 
-# =========================
-# JIKA ADA DATA
-# =========================
-if rows:
-    # SORT PALING AMAN
-    try:
-        rows = sorted(
-            rows,
-            key=lambda x: str(x[1]).split("_")[-1]
-        )
-    except:
-        pass
+            try:
+                rows = sorted(rows, key=lambda x: str(x[1]).split("_")[-1])
+            except:
+                pass
 
-    hasil = rows
-    last_rows = rows
+            hasil = rows
+            last_rows = rows
 
-else:
+        else:
 
-    return render_template(
-        "report.html",
-        hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
-    ))
-    
+            hasil = f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
+
+    return render_template("report.html", hasil=hasil)
+
 
 # ==================================================
 # EXPORT
@@ -274,4 +263,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
