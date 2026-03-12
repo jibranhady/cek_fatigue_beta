@@ -41,7 +41,7 @@ body{background:#f4f6f9}
 <input type="date" name="tanggal" class="form-control" required>
 </div>
 
-<div class="col-md-2">
+<div class="col-md-3">
 <label>Shift</label>
 <select name="shift" class="form-control">
 <option value="1">1</option>
@@ -67,22 +67,17 @@ body{background:#f4f6f9}
 </form>
 
 
-<!-- RESULT -->
 {% if hasil %}
 
-<div class="mt-4">
+<div class="card mt-4 p-4 shadow-sm">
 
-<!-- ✅ KALAU STRING -->
 {% if hasil is string %}
 
 <div class="alert alert-warning">
 {{ hasil }}
 </div>
 
-<!-- ✅ KALAU ADA DATA -->
 {% else %}
-
-<div class="card mt-4 p-4 shadow-sm">
 
 <div class="d-flex justify-content-between mb-3">
 <h5>Preview</h5>
@@ -97,7 +92,6 @@ body{background:#f4f6f9}
 <tr>
 <th>Tanggal</th>
 <th>PID</th>
-<th>Unit</th>
 <th>Distrik</th>
 <th>SLS</th>
 <th>IP</th>
@@ -106,7 +100,6 @@ body{background:#f4f6f9}
 <th>Feedback</th>
 <th>Shift</th>
 <th>Validated</th>
-<th>Video</th>
 </tr>
 </thead>
 
@@ -114,7 +107,6 @@ body{background:#f4f6f9}
 
 {% for r in hasil %}
 <tr>
-
 <td>{{ r[0] }}</td>
 <td>{{ r[1] }}</td>
 <td>{{ r[2] }}</td>
@@ -122,31 +114,15 @@ body{background:#f4f6f9}
 <td>{{ r[4] }}</td>
 <td>{{ r[5] }}</td>
 <td>{{ r[6] }}</td>
-
-<td>
-{% if r[7]|string|upper == "TRUE" %}
-<span class="badge bg-success">TRUE</span>
-{% else %}
-<span class="badge bg-danger">FALSE</span>
-{% endif %}
-</td>
-
+<td>{{ r[7] }}</td>
 <td>{{ r[8] }}</td>
 <td>{{ r[9] }}</td>
-<td>{{ r[10] }}</td>
-
-<td>
-<a href="{{ r[11] }}" target="_blank">▶ Open</a>
-</td>
-
 </tr>
 {% endfor %}
 
 </tbody>
 
 </table>
-
-</div>
 
 </div>
 
