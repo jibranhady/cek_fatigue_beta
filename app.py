@@ -113,7 +113,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL
+# ✅ MENU 2 — REPORTING FINAL (BERSIH)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -134,7 +134,9 @@ def report():
 
         df = pd.read_excel(file)
 
+        # =========================
         # cari kolom url video fleksibel
+        # =========================
         url_cols = [c for c in df.columns if "video" in c.lower()]
         if not url_cols:
             return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
@@ -143,10 +145,15 @@ def report():
 
         rows = []
 
+        # =========================
+        # LOOP DATA
+        # =========================
         for _, r in df.iterrows():
 
             try:
+
                 url = str(r[url_col]).strip()
+
                 if not url or "http" not in url:
                     continue
 
@@ -166,7 +173,7 @@ def report():
                 jam_int = int(jam_final[:2])
 
                 # =========================
-                # FILTER SHIFT (DIGABUNG)
+                # FILTER SHIFT
                 # =========================
                 if shift == "1":
                     valid_jam = list(range(2,6)) + list(range(10,13))
@@ -174,15 +181,15 @@ def report():
                 elif shift == "2":
                     valid_jam = list(range(10,13)) + list(range(14,17))
 
-                elif shift == "3":
+                else:
                     valid_jam = list(range(14,17)) + [22,23,0]
 
                 if jam_int not in valid_jam:
                     continue
 
-                # PID FINAL
-                pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
-
+                # =========================
+                # MATCH RAWDATA
+                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
                 match = df_raw[df_raw["ANGKA"] == angka]
 
@@ -191,6 +198,8 @@ def report():
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
+
+                pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
                 rows.append([
                     tanggal_cek,
@@ -210,18 +219,21 @@ def report():
             except:
                 continue
 
-        # kalau kosong
+        # =========================
+        # KALAU KOSONG
+        # =========================
         if not rows:
             return render_template("report.html", hasil="⚠️ Data belum masuk")
 
-        # urut berdasarkan waktu
+        # =========================
+        # SORT BERDASARKAN WAKTU
+        # =========================
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
         hasil = rows
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-
 
 # ==================================================
 # EXPORT
@@ -243,3 +255,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
