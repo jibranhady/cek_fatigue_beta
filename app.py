@@ -208,10 +208,13 @@ def report():
                 # =========================
                 # MATCH RAWDATA VIA KENDARAAN
                 # =========================
-                kode = str(r[kode_col]).strip()
-                angka = ''.join(filter(str.isdigit, kode))
+                match = df_raw[df_raw["deviceid"].astype(str).str.strip() == sls]
 
-                match = df_raw[df_raw["ANGKA"] == angka]
+                if match.empty:
+                    continue
+
+                distrik = match.iloc[0]["distrik"]
+                ip = match.iloc[0]["device_ip"]
 
                 if match.empty:
                     continue
@@ -276,4 +279,5 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
 
