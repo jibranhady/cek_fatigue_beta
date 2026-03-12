@@ -18,7 +18,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (TIDAK DIUBAH)
+# ✅ MENU 1 — BULK (LOGIC ASLI)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -28,9 +28,7 @@ def index():
 
     if request.method == "POST":
 
-        # =========================
         # UPLOAD FILE EVENT
-        # =========================
         if "file" in request.files:
 
             file = request.files["file"]
@@ -39,9 +37,7 @@ def index():
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # =========================
         # BULK CEK RAW
-        # =========================
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
@@ -149,6 +145,7 @@ def report():
 
             try:
                 url = str(r["URL VIDEO"]).strip()
+
                 if not url or "http" not in url:
                     continue
 
@@ -169,33 +166,39 @@ def report():
                 tanggal = parts_folder[1]
                 jam = parts_folder[2]
 
+                # minus 1 jam + tanggal ikut
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
                 tanggal_final = dt_final.strftime("%Y%m%d")
                 jam_final = dt_final.strftime("%H%M%S")
-                jam_int = int(dt_final.strftime("%H"))
+                jam_int = dt_final.hour
 
                 total_data += 1
 
-                # FILTER SHIFT
+                # =========================
+                # FILTER SHIFT (FINAL FIX)
+                # =========================
                 if shift == "1":
-                    valid_jam = list(range(2,6)) + list(range(10,13))
-                elif shift == "2":
-                    valid_jam = list(range(10,13)) + list(range(14,17))
-                else:
-                    valid_jam = list(range(14,17)) + [22,23,0]
+                    if not (2 <= jam_int <= 5 or 10 <= jam_int <= 12):
+                        continue
 
-                if jam_int not in valid_jam:
-                    continue
+                elif shift == "2":
+                    if not (10 <= jam_int <= 12 or 14 <= jam_int <= 16):
+                        continue
+
+                elif shift == "3":
+                    if not (14 <= jam_int <= 16 or 22 <= jam_int <= 23 or jam_int == 0):
+                        continue
 
                 # =========================
-                # MATCH RAWDATA VIA KENDARAAN (FIX TOTAL)
+                # MATCH RAWDATA VIA KENDARAAN
                 # =========================
                 kode = str(r["KODE KENDARAAN"]).strip()
                 angka = ''.join(filter(str.isdigit, kode))
 
                 match = df_raw[df_raw["ANGKA"] == angka]
+
                 if match.empty:
                     continue
 
