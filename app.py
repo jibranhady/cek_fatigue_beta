@@ -219,10 +219,10 @@ def report():
                 continue
 
         if not rows:
-            return render_template(
-                "report.html",
-                hasil=f"⚠️ Tidak ada data sesuai shift {shift} (total terbaca: {total_data})"
-            )
+    return render_template(
+        "report.html",
+        hasil=f"⚠️ Tidak ada data sesuai shift {shift}. Coba shift lain. (Total data terbaca: {total_data})"
+    )
 
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
@@ -252,3 +252,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
