@@ -111,10 +111,6 @@ def index():
 
     return render_template("index.html", hasil=hasil)
 
-
-# ==================================================
-# ✅ MENU 2 — REPORTING (FINAL STABLE)
-# ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
 
@@ -150,18 +146,18 @@ def report():
             try:
 
                 url = str(r[url_col]).strip()
-
                 if not url or "http" not in url:
                     continue
 
+                # =========================
+                # PARSING RAW DARI URL (FIX)
+                # =========================
                 parts = url.split("/")
-                if len(parts) < 3:
-                    continue
 
-                sls = parts[-3]
-                event_folder = parts[-2]
+                folder = parts[-2]  # CLOSEDEYES_20260310_001338
+                sls = parts[-3]     # SLS30I607
 
-                raw_format = f"{sls}-{event_folder}"
+                raw_format = f"{sls}-{folder}"
 
                 bagian1, tanggal, jam = raw_format.split("_")
                 sls_fix, alert = bagian1.split("-")
@@ -176,6 +172,9 @@ def report():
 
                 pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
+                # =========================
+                # MATCH RAWDATA VIA ANGKA
+                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
                 match = df_raw[df_raw["ANGKA"] == angka]
 
@@ -233,3 +232,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
