@@ -6,17 +6,119 @@ from io import BytesIO
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
 
 # =========================
-# LOAD RAWDATA (WAJIB)
+# LOAD RAWDATA
 # =========================
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)").astype(str)
 
 last_rows = []
 
+
 # ==================================================
-# ✅ REPORT FINAL (STABLE VERSION)
+# ✅ MENU 1 — BULK (LOGIC ASLI TIDAK DIUBAH)
+# ==================================================
+@app.route("/", methods=["GET", "POST"])
+def index():
+
+    global last_rows
+    hasil = None
+
+    if request.method == "POST":
+
+        # =========================
+        # UPLOAD FILE EVENT
+        # =========================
+        if "file" in request.files:
+
+            file = request.files["file"]
+
+            if file.filename != "":
+                file.save(UPLOAD_PATH)
+                hasil = "✅ File laporan berhasil diupload"
+
+        # =========================
+        # BULK CEK RAW (LOGIC AWAL)
+        # =========================
+        if "raw" in request.form:
+
+            if not os.path.exists(UPLOAD_PATH):
+                return render_template("index.html", hasil="❌ Upload laporan dulu")
+
+            df_event = pd.read_excel(
+                UPLOAD_PATH,
+                usecols=[
+                    "KODE KENDARAAN",
+                    "WAKTU KEJADIAN",
+                    "WAKTU KE SERVER GABUNGAN",
+                    "INTERVENSI - STATUS CONTEXT"
+                ]
+            )
+
+            df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
+            df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
+
+            df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
+            df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
+            df_event["TANGGAL"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
+
+            rows = []
+
+            for raw in request.form["raw"].splitlines():
+
+                raw = raw.strip().upper()
+                if not raw:
+                    continue
+
+                try:
+                    bagian1, tanggal, jam = raw.split("_")
+                    unit_raw, pelanggaran = bagian1.split("-")
+
+                    # minus 1 jam
+                    jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
+                    jam_final = jam_dt.strftime("%H%M%S")
+
+                    cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
+
+                    if cek_unit.empty:
+                        rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", ""])
+                        continue
+
+                    nama_unit = cek_unit.iloc[0]["unitno"]
+                    angka_unit = ''.join(filter(str.isdigit, nama_unit))
+
+                    cari = df_event[
+                        (df_event["ANGKA_UNIT"] == angka_unit) &
+                        (df_event["JAM"] == jam_final) &
+                        (df_event["TANGGAL"] == tanggal)
+                    ]
+
+                    if cari.empty:
+                        rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", ""])
+                    else:
+                        row = cari.iloc[0]
+                        rows.append([
+                            raw,
+                            nama_unit,
+                            pelanggaran,
+                            row["WAKTU KEJADIAN"],
+                            row["WAKTU KE SERVER GABUNGAN"],
+                            row["INTERVENSI - STATUS CONTEXT"]
+                        ])
+
+                except:
+                    rows.append([raw, "❌ Format salah", "", "", "", ""])
+
+            hasil = rows
+            last_rows = rows
+
+    return render_template("index.html", hasil=hasil)
+
+
+# ==================================================
+# ✅ MENU 2 — REPORTING FINAL (FIXED)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -37,9 +139,6 @@ def report():
 
         df = pd.read_excel(file)
 
-        # =========================
-        # NORMALISASI KOLOM
-        # =========================
         df.columns = df.columns.str.strip().str.upper()
 
         if "URL VIDEO" not in df.columns:
@@ -48,9 +147,6 @@ def report():
         rows = []
         total_data = 0
 
-        # ==================================================
-        # LOOP DATA
-        # ==================================================
         for _, r in df.iterrows():
 
             try:
@@ -64,20 +160,15 @@ def report():
                 if len(parts) < 3:
                     continue
 
-                # =========================
-                # PARSING URL
-                # =========================
-                sls = parts[-3]          # contoh: SLS30I614
-                folder = parts[-2]       # contoh: YAWNING_20260309_235021
+                sls = parts[-3]
+                folder = parts[-2]
 
                 if "_" not in folder:
                     continue
 
                 alert, tanggal, jam = folder.split("_")
 
-                # =========================
-                # FIX WAKTU (-1 JAM + TANGGAL IKUT)
-                # =========================
+                # minus 1 jam + tanggal ikut
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
@@ -87,26 +178,18 @@ def report():
 
                 total_data += 1
 
-                # =========================
                 # FILTER SHIFT
-                # =========================
                 if shift == "1":
                     valid_jam = list(range(2,6)) + list(range(10,13))
-
                 elif shift == "2":
                     valid_jam = list(range(10,13)) + list(range(14,17))
-
                 else:
                     valid_jam = list(range(14,17)) + [22,23,0]
 
                 if jam_int not in valid_jam:
                     continue
 
-                # =========================
-                # MATCH RAWDATA VIA SLS
-                # =========================
                 angka = ''.join(filter(str.isdigit, sls))
-
                 match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
@@ -115,9 +198,6 @@ def report():
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
-                # =========================
-                # PID FINAL
-                # =========================
                 pid = f"{sls}-{alert}_{tanggal_final}_{jam_final}"
 
                 rows.append([
@@ -138,18 +218,12 @@ def report():
             except:
                 continue
 
-        # =========================
-        # JIKA KOSONG
-        # =========================
         if not rows:
             return render_template(
                 "report.html",
-                hasil=f"⚠️ Tidak ada data sesuai shift {shift} (total data terbaca: {total_data})"
+                hasil=f"⚠️ Tidak ada data sesuai shift {shift} (total terbaca: {total_data})"
             )
 
-        # =========================
-        # SORT BERDASARKAN WAKTU
-        # =========================
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
         hasil = rows
@@ -159,7 +233,7 @@ def report():
 
 
 # ==================================================
-# EXPORT EXCEL
+# EXPORT
 # ==================================================
 @app.route("/export")
 def export_excel():
@@ -167,20 +241,7 @@ def export_excel():
     if not last_rows:
         return "Tidak ada data"
 
-    df = pd.DataFrame(last_rows, columns=[
-        "Tanggal",
-        "PID",
-        "Unit",
-        "Distrik",
-        "SLS",
-        "IP",
-        "Alert",
-        "OCR",
-        "Waktu Server",
-        "Shift",
-        "Validated",
-        "URL"
-    ])
+    df = pd.DataFrame(last_rows)
 
     output = BytesIO()
     df.to_excel(output, index=False)
