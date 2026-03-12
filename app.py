@@ -8,14 +8,19 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
 
-# RAWDATA tetap global
+# =========================
+# LOAD RAWDATA
+# =========================
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
+
+# bikin kolom angka (sekali aja)
+df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)")
 
 last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (LOGIC ASLI JANGAN DIUBAH)
+# ✅ MENU 1 — BULK (JANGAN DIUBAH)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -25,29 +30,16 @@ def index():
 
     if request.method == "POST":
 
-        # =========================
-        # UPLOAD FILE
-        # =========================
         if "file" in request.files:
-
             file = request.files["file"]
-
             if file.filename != "":
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # =========================
-        # BULK CEK RAW (LOGIC AWAL)
-        # =========================
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
                 return render_template("index.html", hasil="❌ Upload laporan dulu")
-
-            raw_text = request.form["raw"]
-
-            if not raw_text.strip():
-                return render_template("index.html", hasil="❌ Tidak ada input")
 
             df_event = pd.read_excel(
                 UPLOAD_PATH,
@@ -68,7 +60,7 @@ def index():
 
             rows = []
 
-            for raw in raw_text.splitlines():
+            for raw in request.form["raw"].splitlines():
 
                 raw = raw.strip().upper()
                 if not raw:
@@ -78,11 +70,9 @@ def index():
                     bagian1, tanggal, jam = raw.split("_")
                     unit_raw, pelanggaran = bagian1.split("-")
 
-                    # kurangi 1 jam
                     jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                     jam_final = jam_dt.strftime("%H%M%S")
 
-                    # cari unit di rawdata
                     cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
 
                     if cek_unit.empty:
@@ -121,7 +111,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING (FIX TOTAL)
+# ✅ MENU 2 — REPORTING (FINAL FIX)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -143,39 +133,45 @@ def report():
             return render_template("report.html", hasil="❌ Upload file dulu")
 
         df = pd.read_excel(file)
+
+        print("KOLOM FILE:", df.columns)
+        print("TOTAL ROW:", len(df))
+
+        # cari kolom URL fleksibel
+        url_col = [c for c in df.columns if "video" in c.lower()][0]
+
         rows = []
 
         for _, r in df.iterrows():
 
             try:
 
-                # =========================
-                # PARSING DARI URL VIDEO
-                # =========================
-                url = str(r["URL VIDEO"]).strip()
+                url = str(r[url_col]).strip()
 
                 if not url or "http" not in url:
                     continue
 
+                # =========================
+                # PARSING RAW DARI URL
+                # =========================
                 parts = url.split("/")
 
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]  # SLS30I607
-                event_folder = parts[-2]  # CLOSEDEYES_20260310_001338
+                sls = parts[-3]
+                event_folder = parts[-2]
 
                 raw_format = f"{sls}-{event_folder}"
 
-                # =========================
-                # PECAH RAW FORMAT
-                # =========================
                 bagian1, tanggal, jam = raw_format.split("_")
                 sls_fix, alert = bagian1.split("-")
 
                 # kurangi 1 jam
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
+
+                print("RAW:", raw_format, "| JAM FINAL:", jam_final)
 
                 # filter jam
                 if not (jam_awal <= jam_final <= jam_akhir):
@@ -187,20 +183,15 @@ def report():
                 # MATCH RAWDATA VIA ANGKA
                 # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
-
-                df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)")
-
                 match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
+                    print("TIDAK MATCH:", angka)
                     continue
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
-                # =========================
-                # SIMPAN
-                # =========================
                 rows.append([
                     tanggal_cek,
                     pid,
@@ -218,10 +209,10 @@ def report():
                     url
                 ])
 
-            except:
+            except Exception as e:
+                print("ERROR:", e)
                 continue
 
-        # SORT BERDASARKAN WAKTU PID
         rows.sort(key=lambda x: x[1])
 
         hasil = rows
@@ -250,4 +241,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
