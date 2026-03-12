@@ -30,14 +30,12 @@ def index():
 
     if request.method == "POST":
 
-        # upload file event
         if "file" in request.files:
             file = request.files["file"]
             if file.filename != "":
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # bulk cek raw
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
@@ -132,9 +130,6 @@ def report():
         if file.filename == "":
             return render_template("report.html", hasil="❌ Upload file dulu")
 
-        # =========================
-        # BACA FILE
-        # =========================
         df = pd.read_excel(file)
 
         # normalisasi kolom
@@ -143,35 +138,29 @@ def report():
         if "URL VIDEO" not in df.columns:
             return render_template("report.html", hasil=f"❌ Kolom tidak ketemu: {list(df.columns)}")
 
+        if "KODE KENDARAAN" not in df.columns:
+            return render_template("report.html", hasil="❌ Kolom KODE KENDARAAN tidak ada")
+
         url_col = "URL VIDEO"
 
         rows = []
 
-        # =========================
-        # LOOP DATA
-        # =========================
         for _, r in df.iterrows():
 
             try:
 
                 url = str(r[url_col]).strip()
-
                 if not url or "http" not in url:
                     continue
 
                 parts = url.split("/")
-
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]
                 folder = parts[-2]  # CLOSEDEYES_20260310_001338
-
                 alert, tanggal, jam = folder.split("_")
 
-                # =========================
-                # KURANGI 1 JAM
-                # =========================
+                # minus 1 jam
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
                 jam_int = int(jam_final[:2])
@@ -192,7 +181,7 @@ def report():
                     continue
 
                 # =========================
-                # MATCH RAWDATA
+                # MATCH RAWDATA VIA KODE KENDARAAN
                 # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
                 match = df_raw[df_raw["ANGKA"] == angka]
@@ -202,6 +191,7 @@ def report():
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
+                sls = match.iloc[0]["deviceid"]
 
                 pid = f"{sls}-{alert}_{tanggal}_{jam_final}"
 
@@ -223,21 +213,17 @@ def report():
             except:
                 continue
 
-        # =========================
-        # KOSONG
-        # =========================
         if not rows:
             return render_template("report.html", hasil="⚠️ Data belum masuk")
 
-        # =========================
-        # SORT BERDASARKAN WAKTU
-        # =========================
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
         hasil = rows
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
+
+
 # ==================================================
 # EXPORT
 # ==================================================
@@ -258,5 +244,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
-
