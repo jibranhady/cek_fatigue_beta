@@ -121,7 +121,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING (LOGIC BARU)
+# ✅ MENU 2 — REPORTING (FIX TOTAL)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -148,6 +148,10 @@ def report():
         for _, r in df.iterrows():
 
             try:
+
+                # =========================
+                # PARSING DARI URL VIDEO
+                # =========================
                 url = str(r["URL VIDEO"]).strip()
 
                 if not url or "http" not in url:
@@ -158,22 +162,35 @@ def report():
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]
-                alert_time = parts[-2]
+                sls = parts[-3]  # SLS30I607
+                event_folder = parts[-2]  # CLOSEDEYES_20260310_001338
 
-                alert, tanggal, jam = alert_time.split("_")
+                raw_format = f"{sls}-{event_folder}"
+
+                # =========================
+                # PECAH RAW FORMAT
+                # =========================
+                bagian1, tanggal, jam = raw_format.split("_")
+                sls_fix, alert = bagian1.split("-")
 
                 # kurangi 1 jam
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
 
+                # filter jam
                 if not (jam_awal <= jam_final <= jam_akhir):
                     continue
 
-                pid = f"{sls}-{alert}_{tanggal}_{jam_final}"
+                pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
+                # =========================
+                # MATCH RAWDATA VIA ANGKA
+                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
-                match = df_raw[df_raw["unitno"].astype(str).str.contains(angka)]
+
+                df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)")
+
+                match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
                     continue
@@ -181,12 +198,15 @@ def report():
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
+                # =========================
+                # SIMPAN
+                # =========================
                 rows.append([
                     tanggal_cek,
                     pid,
                     angka,
                     distrik,
-                    sls,
+                    sls_fix,
                     ip,
                     alert,
                     r["INTERVENSI - STATUS CONTEXT"],
@@ -201,7 +221,9 @@ def report():
             except:
                 continue
 
+        # SORT BERDASARKAN WAKTU PID
         rows.sort(key=lambda x: x[1])
+
         hasil = rows
         last_rows = rows
 
@@ -228,3 +250,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
