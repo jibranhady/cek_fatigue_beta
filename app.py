@@ -20,7 +20,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (JANGAN DIUBAH)
+# ✅ MENU 1 — BULK (LOGIC ASLI)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -30,12 +30,14 @@ def index():
 
     if request.method == "POST":
 
+        # upload file
         if "file" in request.files:
             file = request.files["file"]
             if file.filename != "":
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
+        # bulk check
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
@@ -111,7 +113,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING (FINAL FIX)
+# ✅ MENU 2 — REPORTING (FINAL STABLE)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -134,11 +136,12 @@ def report():
 
         df = pd.read_excel(file)
 
-        print("KOLOM FILE:", df.columns)
-        print("TOTAL ROW:", len(df))
-
         # cari kolom URL fleksibel
-        url_col = [c for c in df.columns if "video" in c.lower()][0]
+        url_cols = [c for c in df.columns if "video" in c.lower()]
+        if not url_cols:
+            return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
+
+        url_col = url_cols[0]
 
         rows = []
 
@@ -151,11 +154,7 @@ def report():
                 if not url or "http" not in url:
                     continue
 
-                # =========================
-                # PARSING RAW DARI URL
-                # =========================
                 parts = url.split("/")
-
                 if len(parts) < 3:
                     continue
 
@@ -171,22 +170,16 @@ def report():
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
 
-                print("RAW:", raw_format, "| JAM FINAL:", jam_final)
-
                 # filter jam
                 if not (jam_awal <= jam_final <= jam_akhir):
                     continue
 
                 pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
-                # =========================
-                # MATCH RAWDATA VIA ANGKA
-                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
                 match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
-                    print("TIDAK MATCH:", angka)
                     continue
 
                 distrik = match.iloc[0]["distrik"]
@@ -209,8 +202,7 @@ def report():
                     url
                 ])
 
-            except Exception as e:
-                print("ERROR:", e)
+            except:
                 continue
 
         rows.sort(key=lambda x: x[1])
