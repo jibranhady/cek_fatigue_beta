@@ -8,15 +8,15 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # =========================
-# LOAD RAWDATA
+# LOAD RAWDATA (WAJIB)
 # =========================
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
-df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)")
+df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)").astype(str)
 
 last_rows = []
 
 # ==================================================
-# ✅ REPORT FINAL (ALL FIXED)
+# ✅ REPORT FINAL (STABLE VERSION)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -45,10 +45,8 @@ def report():
         if "URL VIDEO" not in df.columns:
             return render_template("report.html", hasil=f"❌ Kolom tidak ada: {list(df.columns)}")
 
-        if "KODE KENDARAAN" not in df.columns:
-            return render_template("report.html", hasil="❌ Kolom KODE KENDARAAN tidak ada")
-
         rows = []
+        total_data = 0
 
         # ==================================================
         # LOOP DATA
@@ -57,9 +55,6 @@ def report():
 
             try:
 
-                # =========================
-                # AMBIL URL
-                # =========================
                 url = str(r["URL VIDEO"]).strip()
 
                 if not url or "http" not in url:
@@ -69,7 +64,11 @@ def report():
                 if len(parts) < 3:
                     continue
 
-                folder = parts[-2]  # CLOSEDEYES_20260310_001338
+                # =========================
+                # PARSING URL
+                # =========================
+                sls = parts[-3]          # contoh: SLS30I614
+                folder = parts[-2]       # contoh: YAWNING_20260309_235021
 
                 if "_" not in folder:
                     continue
@@ -77,7 +76,7 @@ def report():
                 alert, tanggal, jam = folder.split("_")
 
                 # =========================
-                # FIX WAKTU (PENTING)
+                # FIX WAKTU (-1 JAM + TANGGAL IKUT)
                 # =========================
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
@@ -85,6 +84,8 @@ def report():
                 tanggal_final = dt_final.strftime("%Y%m%d")
                 jam_final = dt_final.strftime("%H%M%S")
                 jam_int = int(dt_final.strftime("%H"))
+
+                total_data += 1
 
                 # =========================
                 # FILTER SHIFT
@@ -102,22 +103,17 @@ def report():
                     continue
 
                 # =========================
-                # AMBIL ANGKA DARI KENDARAAN
+                # MATCH RAWDATA VIA SLS
                 # =========================
-                kode = str(r["KODE KENDARAAN"]).strip()
-
-                if "-" not in kode:
-                    continue
-
-                angka = kode.split("-")[-1]
+                angka = ''.join(filter(str.isdigit, sls))
 
                 match = df_raw[df_raw["ANGKA"] == angka]
+
                 if match.empty:
                     continue
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
-                sls = match.iloc[0]["deviceid"]
 
                 # =========================
                 # PID FINAL
@@ -132,8 +128,8 @@ def report():
                     sls,
                     ip,
                     alert,
-                    r["INTERVENSI - STATUS CONTEXT"],
-                    r["WAKTU KE SERVER GABUNGAN"],
+                    r.get("INTERVENSI - STATUS CONTEXT", ""),
+                    r.get("WAKTU KE SERVER GABUNGAN", ""),
                     f"SHIFT {shift}",
                     validated,
                     url
@@ -146,7 +142,10 @@ def report():
         # JIKA KOSONG
         # =========================
         if not rows:
-            return render_template("report.html", hasil="⚠️ Data belum masuk")
+            return render_template(
+                "report.html",
+                hasil=f"⚠️ Tidak ada data sesuai shift {shift} (total data terbaca: {total_data})"
+            )
 
         # =========================
         # SORT BERDASARKAN WAKTU
@@ -168,7 +167,20 @@ def export_excel():
     if not last_rows:
         return "Tidak ada data"
 
-    df = pd.DataFrame(last_rows)
+    df = pd.DataFrame(last_rows, columns=[
+        "Tanggal",
+        "PID",
+        "Unit",
+        "Distrik",
+        "SLS",
+        "IP",
+        "Alert",
+        "OCR",
+        "Waktu Server",
+        "Shift",
+        "Validated",
+        "URL"
+    ])
 
     output = BytesIO()
     df.to_excel(output, index=False)
