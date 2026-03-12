@@ -58,14 +58,32 @@ body{background:#f4f6f9}
 <input type="text" name="validated" class="form-control" required>
 </div>
 
-<div class="col-md-2">
-<label>Jam Awal</label>
-<input type="time" name="jam_awal" class="form-control" required>
+<div class="row g-3">
+
+<div class="col-md-3">
+<label>Tanggal</label>
+<input type="date" name="tanggal" class="form-control" required>
 </div>
 
 <div class="col-md-2">
-<label>Jam Akhir</label>
-<input type="time" name="jam_akhir" class="form-control" required>
+<label>Shift</label>
+<select name="shift" class="form-control">
+<option>1</option>
+<option>2</option>
+<option>3</option>
+</select>
+</div>
+
+<div class="col-md-3">
+<label>Validated By</label>
+<input type="text" name="validated" class="form-control" required>
+</div>
+
+<div class="col-md-12">
+<label>Upload File Event</label>
+<input type="file" name="file" class="form-control" required>
+</div>
+
 </div>
 
 <div class="col-md-12">
@@ -149,3 +167,4 @@ body{background:#f4f6f9}
 
 </body>
 </html>
+
