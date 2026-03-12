@@ -13,14 +13,14 @@ UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
 # =========================
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 
-# bikin kolom angka (sekali aja)
+# ambil angka unit sekali saja
 df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)")
 
 last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (LOGIC ASLI)
+# ✅ MENU 1 — BULK (TIDAK DIUBAH)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -30,14 +30,14 @@ def index():
 
     if request.method == "POST":
 
-        # upload file
+        # upload file event
         if "file" in request.files:
             file = request.files["file"]
             if file.filename != "":
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # bulk check
+        # bulk cek raw
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
@@ -111,6 +111,10 @@ def index():
 
     return render_template("index.html", hasil=hasil)
 
+
+# ==================================================
+# ✅ MENU 2 — REPORTING FINAL
+# ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
 
@@ -130,7 +134,7 @@ def report():
 
         df = pd.read_excel(file)
 
-        # cari kolom URL fleksibel
+        # cari kolom url video fleksibel
         url_cols = [c for c in df.columns if "video" in c.lower()]
         if not url_cols:
             return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
@@ -146,44 +150,41 @@ def report():
                 if not url or "http" not in url:
                     continue
 
-                # =========================
-                # PARSING RAW DARI URL
-                # =========================
                 parts = url.split("/")
-                folder = parts[-2]      # CLOSEDEYES_20260310_001338
-                sls = parts[-3]         # SLS30I607
+                sls = parts[-3]
+                folder = parts[-2]
 
-                bagian1, tanggal, jam = f"{sls}-{folder}".split("_")
+                raw_format = f"{sls}-{folder}"
+                bagian1, tanggal, jam = raw_format.split("_")
                 sls_fix, alert = bagian1.split("-")
 
-                # kurangi 1 jam
+                # =========================
+                # KURANGI 1 JAM
+                # =========================
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
-
-                # =========================
-                # AUTO FILTER BERDASARKAN SHIFT
-                # =========================
                 jam_int = int(jam_final[:2])
 
+                # =========================
+                # FILTER SHIFT (DIGABUNG)
+                # =========================
                 if shift == "1":
-                    if not ((2 <= jam_int <= 5) or (10 <= jam_int <= 12)):
-                        continue
+                    valid_jam = list(range(2,6)) + list(range(10,13))
 
                 elif shift == "2":
-                    if not ((10 <= jam_int <= 12) or (14 <= jam_int <= 16)):
-                        continue
+                    valid_jam = list(range(10,13)) + list(range(14,17))
 
                 elif shift == "3":
-                    if not ((14 <= jam_int <= 16) or (22 <= jam_int <= 23) or jam_int == 0):
-                        continue
+                    valid_jam = list(range(14,17)) + [22,23,0]
 
+                if jam_int not in valid_jam:
+                    continue
+
+                # PID FINAL
                 pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
-                # =========================
-                # MATCH RAWDATA VIA ANGKA
-                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
-                match = df_raw[df_raw["ANGKA"].astype(str).str.contains(angka, na=False)]
+                match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
                     continue
@@ -201,8 +202,6 @@ def report():
                     alert,
                     r["INTERVENSI - STATUS CONTEXT"],
                     r["WAKTU KE SERVER GABUNGAN"],
-                    "",
-                    "",
                     f"SHIFT {shift}",
                     validated,
                     url
@@ -211,19 +210,19 @@ def report():
             except:
                 continue
 
-        rows.sort(key=lambda x: x[1])
-
-        # =========================
-        # KALAU TIDAK ADA DATA
-        # =========================
+        # kalau kosong
         if not rows:
-            hasil = "❗ Data belum masuk untuk jam observasi shift ini"
-        else:
-            hasil = rows
-            last_rows = rows
+            return render_template("report.html", hasil="⚠️ Data belum masuk")
+
+        # urut berdasarkan waktu
+        rows.sort(key=lambda x: x[1].split("_")[-1])
+
+        hasil = rows
+        last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-    
+
+
 # ==================================================
 # EXPORT
 # ==================================================
@@ -244,5 +243,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
-
