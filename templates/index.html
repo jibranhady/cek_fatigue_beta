@@ -53,9 +53,16 @@ body{background:#f4f6f9}
 placeholder="Paste banyak raw di sini..."></textarea>
 
 <div class="d-flex gap-2 mt-3">
-<button class="btn btn-success w-100">Cek Semua</button>
+
+<button name="bulk" value="1" class="btn btn-success w-100">
+Cek Semua
+</button>
+
 <button type="button" class="btn btn-outline-secondary w-100"
-onclick="document.getElementById('rawInput').value=''">Clear</button>
+onclick="document.getElementById('rawInput').value=''">
+Clear
+</button>
+
 </div>
 
 </form>
@@ -70,7 +77,11 @@ onclick="document.getElementById('rawInput').value=''">Clear</button>
 
 <div class="d-flex justify-content-between mb-3">
 <h5>Hasil</h5>
+
+{% if hasil is not string %}
 <a href="/export" class="btn btn-success">Export Excel</a>
+{% endif %}
+
 </div>
 
 <div class="table-responsive">
