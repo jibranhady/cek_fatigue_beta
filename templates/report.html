@@ -36,27 +36,27 @@ body{background:#f4f6f9}
 
 <div class="row g-3">
 
-<div class="col-md-4">
+<div class="col-md-3">
 <label>Tanggal</label>
 <input type="date" name="tanggal" class="form-control" required>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-2">
 <label>Shift</label>
 <select name="shift" class="form-control">
-<option value="1">Shift 1</option>
-<option value="2">Shift 2</option>
-<option value="3">Shift 3</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
 </select>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-3">
 <label>Validated By</label>
 <input type="text" name="validated" class="form-control" required>
 </div>
 
 <div class="col-md-12">
-<label>Upload File Event</label>
+<label>Upload File</label>
 <input type="file" name="file" class="form-control" required>
 </div>
 
@@ -67,7 +67,20 @@ body{background:#f4f6f9}
 </form>
 
 
+<!-- RESULT -->
 {% if hasil %}
+
+<div class="mt-4">
+
+<!-- ✅ KALAU STRING -->
+{% if hasil is string %}
+
+<div class="alert alert-warning">
+{{ hasil }}
+</div>
+
+<!-- ✅ KALAU ADA DATA -->
+{% else %}
 
 <div class="card mt-4 p-4 shadow-sm">
 
@@ -101,6 +114,7 @@ body{background:#f4f6f9}
 
 {% for r in hasil %}
 <tr>
+
 <td>{{ r[0] }}</td>
 <td>{{ r[1] }}</td>
 <td>{{ r[2] }}</td>
@@ -133,6 +147,10 @@ body{background:#f4f6f9}
 </table>
 
 </div>
+
+</div>
+
+{% endif %}
 
 </div>
 
