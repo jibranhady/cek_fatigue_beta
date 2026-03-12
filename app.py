@@ -12,13 +12,15 @@ UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
 # LOAD RAWDATA
 # =========================
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
-df_raw["ANGKA"] = df_raw["unitno"].astype(str).str.extract(r"(\d+)").astype(str)
+
+# normalize deviceid SEKALI SAJA
+df_raw["deviceid_clean"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 
 last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (LOGIC ASLI)
+# ✅ MENU 1 — BULK (ASLI LU, GA DIUBAH)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -28,7 +30,9 @@ def index():
 
     if request.method == "POST":
 
+        # =========================
         # UPLOAD FILE EVENT
+        # =========================
         if "file" in request.files:
 
             file = request.files["file"]
@@ -37,7 +41,9 @@ def index():
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # BULK CEK RAW
+        # =========================
+        # BULK CEK RAW (LOGIC ASLI)
+        # =========================
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
@@ -75,7 +81,7 @@ def index():
                     jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                     jam_final = jam_dt.strftime("%H%M%S")
 
-                    cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
+                    cek_unit = df_raw[df_raw["deviceid_clean"] == unit_raw]
 
                     if cek_unit.empty:
                         rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", ""])
@@ -113,7 +119,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL (SHIFT OFF DULU)
+# ✅ MENU 2 — REPORT (DEBUG FINAL)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -136,36 +142,23 @@ def report():
 
         print("KOLOM FILE:", df.columns.tolist())
 
-        # =========================
         # AUTO DETECT KOLOM
-        # =========================
         url_col = None
-        kode_col = None
-
         for c in df.columns:
-
             if "video" in str(c).lower():
                 url_col = c
-
-            if "kendaraan" in str(c).lower():
-                kode_col = c
 
         if not url_col:
             return render_template("report.html", hasil="❌ Kolom URL tidak ketemu")
 
-        if not kode_col:
-            return render_template("report.html", hasil="❌ Kolom kendaraan tidak ketemu")
-
         rows = []
-        terbaca = 0
+        total_url = 0
+        total_match = 0
 
         for _, r in df.iterrows():
 
             try:
 
-                # =========================
-                # HANDLE NAN + TYPE
-                # =========================
                 url_val = r[url_col]
 
                 if pd.isna(url_val):
@@ -176,19 +169,16 @@ def report():
                 if not url.startswith("http"):
                     continue
 
-                terbaca += 1
+                total_url += 1
 
-                # =========================
-                # PARSING URL
-                # =========================
                 parts = url.split("/")
 
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]
-                folder = parts[-2]
+                sls = parts[-3].strip().upper()
 
+                folder = parts[-2]
                 folder_clean = folder.replace(".mp4", "")
                 parts_folder = folder_clean.split("_")
 
@@ -205,19 +195,13 @@ def report():
                 tanggal_final = dt_final.strftime("%Y%m%d")
                 jam_final = dt_final.strftime("%H%M%S")
 
-                # =========================
-                # MATCH RAWDATA VIA KENDARAAN
-                # =========================
-                match = df_raw[df_raw["deviceid"].astype(str).str.strip() == sls]
+                match = df_raw[df_raw["deviceid_clean"] == sls]
 
                 if match.empty:
+                    print("TIDAK MATCH:", sls)
                     continue
 
-                distrik = match.iloc[0]["distrik"]
-                ip = match.iloc[0]["device_ip"]
-
-                if match.empty:
-                    continue
+                total_match += 1
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
@@ -227,7 +211,6 @@ def report():
                 rows.append([
                     tanggal_cek,
                     pid,
-                    angka,
                     distrik,
                     sls,
                     ip,
@@ -241,14 +224,14 @@ def report():
 
             except Exception as e:
                 print("ERROR:", e)
-                continue
 
-        print("TOTAL URL TERBACA:", terbaca)
+        print("TOTAL URL:", total_url)
+        print("TOTAL MATCH:", total_match)
 
         if not rows:
             return render_template(
                 "report.html",
-                hasil=f"⚠️ Data tidak terbaca. Total URL valid: {terbaca}"
+                hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
             )
 
         rows.sort(key=lambda x: x[1].split("_")[-1])
@@ -279,5 +262,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
-
