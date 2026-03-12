@@ -113,7 +113,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL (FIXED TOTAL)
+# ✅ MENU 2 — REPORTING FINAL (SHIFT OFF DULU)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -139,7 +139,6 @@ def report():
             return render_template("report.html", hasil="❌ Kolom wajib tidak ditemukan")
 
         rows = []
-        total_data = 0
 
         for _, r in df.iterrows():
 
@@ -172,33 +171,12 @@ def report():
 
                 tanggal_final = dt_final.strftime("%Y%m%d")
                 jam_final = dt_final.strftime("%H%M%S")
-                jam_int = dt_final.hour
 
-                total_data += 1
-
-                # =========================
-                # FILTER SHIFT (FINAL FIX)
-                # =========================
-                if shift == "1":
-                    if not (2 <= jam_int <= 5 or 10 <= jam_int <= 12):
-                        continue
-
-                elif shift == "2":
-                    if not (10 <= jam_int <= 12 or 14 <= jam_int <= 16):
-                        continue
-
-                elif shift == "3":
-                    if not (14 <= jam_int <= 16 or 22 <= jam_int <= 23 or jam_int == 0):
-                        continue
-
-                # =========================
-                # MATCH RAWDATA VIA KENDARAAN
-                # =========================
+                # MATCH RAWDATA VIA KENDARAAN (FINAL)
                 kode = str(r["KODE KENDARAAN"]).strip()
                 angka = ''.join(filter(str.isdigit, kode))
 
                 match = df_raw[df_raw["ANGKA"] == angka]
-
                 if match.empty:
                     continue
 
@@ -226,10 +204,7 @@ def report():
                 continue
 
         if not rows:
-            return render_template(
-                "report.html",
-                hasil=f"⚠️ Tidak ada data sesuai shift {shift}. (Total terbaca: {total_data})"
-            )
+            return render_template("report.html", hasil="⚠️ Tidak ada data terbaca")
 
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
