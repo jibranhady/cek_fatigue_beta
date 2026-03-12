@@ -122,8 +122,6 @@ def report():
         tanggal_cek = request.form["tanggal"]
         shift = request.form["shift"]
         validated = request.form["validated"]
-        jam_awal = request.form["jam_awal"].replace(":", "")
-        jam_akhir = request.form["jam_akhir"].replace(":", "")
 
         file = request.files["file"]
 
@@ -144,31 +142,40 @@ def report():
         for _, r in df.iterrows():
 
             try:
-
                 url = str(r[url_col]).strip()
                 if not url or "http" not in url:
                     continue
 
                 # =========================
-                # PARSING RAW DARI URL (FIX)
+                # PARSING RAW DARI URL
                 # =========================
                 parts = url.split("/")
+                folder = parts[-2]      # CLOSEDEYES_20260310_001338
+                sls = parts[-3]         # SLS30I607
 
-                folder = parts[-2]  # CLOSEDEYES_20260310_001338
-                sls = parts[-3]     # SLS30I607
-
-                raw_format = f"{sls}-{folder}"
-
-                bagian1, tanggal, jam = raw_format.split("_")
+                bagian1, tanggal, jam = f"{sls}-{folder}".split("_")
                 sls_fix, alert = bagian1.split("-")
 
                 # kurangi 1 jam
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
 
-                # filter jam
-                if not (jam_awal <= jam_final <= jam_akhir):
-                    continue
+                # =========================
+                # AUTO FILTER BERDASARKAN SHIFT
+                # =========================
+                jam_int = int(jam_final[:2])
+
+                if shift == "1":
+                    if not ((2 <= jam_int <= 5) or (10 <= jam_int <= 12)):
+                        continue
+
+                elif shift == "2":
+                    if not ((10 <= jam_int <= 12) or (14 <= jam_int <= 16)):
+                        continue
+
+                elif shift == "3":
+                    if not ((14 <= jam_int <= 16) or (22 <= jam_int <= 23) or jam_int == 0):
+                        continue
 
                 pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
@@ -176,7 +183,7 @@ def report():
                 # MATCH RAWDATA VIA ANGKA
                 # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
-                match = df_raw[df_raw["ANGKA"] == angka]
+                match = df_raw[df_raw["ANGKA"].astype(str).str.contains(angka, na=False)]
 
                 if match.empty:
                     continue
@@ -206,12 +213,17 @@ def report():
 
         rows.sort(key=lambda x: x[1])
 
-        hasil = rows
-        last_rows = rows
+        # =========================
+        # KALAU TIDAK ADA DATA
+        # =========================
+        if not rows:
+            hasil = "❗ Data belum masuk untuk jam observasi shift ini"
+        else:
+            hasil = rows
+            last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-
-
+    
 # ==================================================
 # EXPORT
 # ==================================================
@@ -232,4 +244,5 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
 
