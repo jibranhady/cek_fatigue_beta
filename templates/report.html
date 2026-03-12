@@ -14,6 +14,7 @@ body{background:#f4f6f9}
 
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg bg-dark navbar-dark">
 <div class="container">
 <a class="navbar-brand fw-bold" href="/">Fatigue Tools</a>
@@ -30,6 +31,7 @@ body{background:#f4f6f9}
 
 <h3 class="mb-4">📊 Reporting Harian</h3>
 
+<!-- FORM -->
 <form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm">
 
 <div class="row g-3">
@@ -42,9 +44,9 @@ body{background:#f4f6f9}
 <div class="col-md-4">
 <label>Shift</label>
 <select name="shift" class="form-control">
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
+<option value="1">Shift 1</option>
+<option value="2">Shift 2</option>
+<option value="3">Shift 3</option>
 </select>
 </div>
 
@@ -60,7 +62,7 @@ body{background:#f4f6f9}
 
 </div>
 
-<button class="btn btn-primary mt-3 w-100">Generate</button>
+<button class="btn btn-primary mt-3">Generate</button>
 
 </form>
 
@@ -73,11 +75,6 @@ body{background:#f4f6f9}
 <h5>Preview</h5>
 <a href="/export" class="btn btn-success">Export Excel</a>
 </div>
-
-{% if hasil is string %}
-<div class="alert alert-warning">{{ hasil }}</div>
-
-{% else %}
 
 <div class="table-responsive">
 
@@ -96,6 +93,7 @@ body{background:#f4f6f9}
 <th>Feedback</th>
 <th>Shift</th>
 <th>Validated</th>
+<th>Video</th>
 </tr>
 </thead>
 
@@ -110,10 +108,23 @@ body{background:#f4f6f9}
 <td>{{ r[4] }}</td>
 <td>{{ r[5] }}</td>
 <td>{{ r[6] }}</td>
-<td>{{ r[7] }}</td>
+
+<td>
+{% if r[7]|string|upper == "TRUE" %}
+<span class="badge bg-success">TRUE</span>
+{% else %}
+<span class="badge bg-danger">FALSE</span>
+{% endif %}
+</td>
+
 <td>{{ r[8] }}</td>
 <td>{{ r[9] }}</td>
 <td>{{ r[10] }}</td>
+
+<td>
+<a href="{{ r[11] }}" target="_blank">▶ Open</a>
+</td>
+
 </tr>
 {% endfor %}
 
@@ -123,7 +134,6 @@ body{background:#f4f6f9}
 
 </div>
 
-{% endif %}
 </div>
 
 {% endif %}
