@@ -5,21 +5,18 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-# =========================
-# PATH
-# =========================
-UPLOAD_PATH = "upload.xlsx"
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
+
+# RAWDATA tetap global
 df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 
-# simpan hasil terakhir buat export
 last_rows = []
 
 
-# =========================
-# MENU 1 — BULK CHECK
-# =========================
+# ==================================================
+# ✅ MENU 1 — BULK (LOGIC ASLI JANGAN DIUBAH)
+# ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
@@ -28,7 +25,9 @@ def index():
 
     if request.method == "POST":
 
+        # =========================
         # UPLOAD FILE
+        # =========================
         if "file" in request.files:
 
             file = request.files["file"]
@@ -37,93 +36,93 @@ def index():
                 file.save(UPLOAD_PATH)
                 hasil = "✅ File laporan berhasil diupload"
 
-        # BULK CEK
+        # =========================
+        # BULK CEK RAW (LOGIC AWAL)
+        # =========================
         if "raw" in request.form:
 
             if not os.path.exists(UPLOAD_PATH):
-                hasil = "❌ Upload laporan dulu"
+                return render_template("index.html", hasil="❌ Upload laporan dulu")
 
-            else:
+            raw_text = request.form["raw"]
 
-                raw_text = request.form["raw"]
+            if not raw_text.strip():
+                return render_template("index.html", hasil="❌ Tidak ada input")
 
-                if not raw_text.strip():
-                    hasil = "❌ Tidak ada input"
+            df_event = pd.read_excel(
+                UPLOAD_PATH,
+                usecols=[
+                    "KODE KENDARAAN",
+                    "WAKTU KEJADIAN",
+                    "WAKTU KE SERVER GABUNGAN",
+                    "INTERVENSI - STATUS CONTEXT"
+                ]
+            )
 
-                else:
+            df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
+            df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
 
-                    df_event = pd.read_excel(
-                        UPLOAD_PATH,
-                        usecols=[
-                            "KODE KENDARAAN",
-                            "WAKTU KEJADIAN",
-                            "WAKTU KE SERVER GABUNGAN",
-                            "INTERVENSI - STATUS CONTEXT"
-                        ]
-                    )
+            df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
+            df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
+            df_event["TANGGAL"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
 
-                    df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
-                    df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
+            rows = []
 
-                    df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
-                    df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
-                    df_event["TANGGAL"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
+            for raw in raw_text.splitlines():
 
-                    rows = []
+                raw = raw.strip().upper()
+                if not raw:
+                    continue
 
-                    for raw in raw_text.splitlines():
+                try:
+                    bagian1, tanggal, jam = raw.split("_")
+                    unit_raw, pelanggaran = bagian1.split("-")
 
-                        raw = raw.strip().upper()
-                        if not raw:
-                            continue
+                    # kurangi 1 jam
+                    jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
+                    jam_final = jam_dt.strftime("%H%M%S")
 
-                        try:
-                            bagian1, tanggal, jam = raw.split("_")
-                            unit_raw, pelanggaran = bagian1.split("-")
+                    # cari unit di rawdata
+                    cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
 
-                            jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
-                            jam_final = jam_dt.strftime("%H%M%S")
+                    if cek_unit.empty:
+                        rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", ""])
+                        continue
 
-                            cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
+                    nama_unit = cek_unit.iloc[0]["unitno"]
+                    angka_unit = ''.join(filter(str.isdigit, nama_unit))
 
-                            if cek_unit.empty:
-                                rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", ""])
-                                continue
+                    cari = df_event[
+                        (df_event["ANGKA_UNIT"] == angka_unit) &
+                        (df_event["JAM"] == jam_final) &
+                        (df_event["TANGGAL"] == tanggal)
+                    ]
 
-                            nama_unit = cek_unit.iloc[0]["unitno"]
-                            angka_unit = ''.join(filter(str.isdigit, nama_unit))
+                    if cari.empty:
+                        rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", ""])
+                    else:
+                        row = cari.iloc[0]
+                        rows.append([
+                            raw,
+                            nama_unit,
+                            pelanggaran,
+                            row["WAKTU KEJADIAN"],
+                            row["WAKTU KE SERVER GABUNGAN"],
+                            row["INTERVENSI - STATUS CONTEXT"]
+                        ])
 
-                            cari = df_event[
-                                (df_event["ANGKA_UNIT"] == angka_unit) &
-                                (df_event["JAM"] == jam_final) &
-                                (df_event["TANGGAL"] == tanggal)
-                            ]
+                except:
+                    rows.append([raw, "❌ Format salah", "", "", "", ""])
 
-                            if cari.empty:
-                                rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", ""])
-                            else:
-                                row = cari.iloc[0]
-                                rows.append([
-                                    raw,
-                                    nama_unit,
-                                    pelanggaran,
-                                    row["WAKTU KEJADIAN"],
-                                    row["WAKTU KE SERVER GABUNGAN"],
-                                    row["INTERVENSI - STATUS CONTEXT"]
-                                ])
-
-                        except:
-                            rows.append([raw, "❌ Format salah", "", "", "", ""])
-
-                    hasil = rows
-                    last_rows = rows
+            hasil = rows
+            last_rows = rows
 
     return render_template("index.html", hasil=hasil)
 
 
-# =========================
-# MENU 2 — REPORTING HARIAN
-# =========================
+# ==================================================
+# ✅ MENU 2 — REPORTING (LOGIC BARU)
+# ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
 
@@ -134,107 +133,97 @@ def report():
 
         tanggal_cek = request.form["tanggal"]
         shift = request.form["shift"]
-        validated_by = request.form["validated"]
-        jam_awal = request.form["jam_awal"]
-        jam_akhir = request.form["jam_akhir"]
+        validated = request.form["validated"]
+        jam_awal = request.form["jam_awal"].replace(":", "")
+        jam_akhir = request.form["jam_akhir"].replace(":", "")
 
         file = request.files["file"]
 
-        if file.filename != "":
+        if file.filename == "":
+            return render_template("report.html", hasil="❌ Upload file dulu")
 
-            df = pd.read_excel(file)
-            rows = []
+        df = pd.read_excel(file)
+        rows = []
 
-            for _, r in df.iterrows():
+        for _, r in df.iterrows():
 
-                try:
-                    url = str(r["URL VIDEO"])
+            try:
+                url = str(r["URL VIDEO"]).strip()
 
-                    parts = url.split("/")
-                    sls = parts[-3]
-                    alert_time = parts[-2]
-
-                    alert, tanggal, jam = alert_time.split("_")
-
-                    # kurangi 1 jam
-                    jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
-                    jam_final = jam_dt.strftime("%H%M%S")
-
-                    # filter jam
-                    if not (jam_awal.replace(":", "") <= jam_final <= jam_akhir.replace(":", "")):
-                        continue
-
-                    pid = f"{sls}-{alert}_{tanggal}_{jam_final}"
-
-                    angka_unit = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
-                    match = df_raw[df_raw["unitno"].astype(str).str.contains(angka_unit)]
-
-                    if match.empty:
-                        continue
-
-                    distrik = match.iloc[0]["distrik"]
-                    device_ip = match.iloc[0]["device_ip"]
-
-                    rows.append([
-                        tanggal_cek,
-                        pid,
-                        angka_unit,
-                        distrik,
-                        sls,
-                        device_ip,
-                        alert,
-                        r["INTERVENSI - STATUS CONTEXT"],
-                        r["WAKTU KE SERVER GABUNGAN"],
-                        "",
-                        "",
-                        f"SHIFT {shift}",
-                        validated_by,
-                        url
-                    ])
-
-                except:
+                if not url or "http" not in url:
                     continue
 
-            rows.sort(key=lambda x: x[1])
-            hasil = rows
-            last_rows = rows
+                parts = url.split("/")
+
+                if len(parts) < 3:
+                    continue
+
+                sls = parts[-3]
+                alert_time = parts[-2]
+
+                alert, tanggal, jam = alert_time.split("_")
+
+                # kurangi 1 jam
+                jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
+                jam_final = jam_dt.strftime("%H%M%S")
+
+                if not (jam_awal <= jam_final <= jam_akhir):
+                    continue
+
+                pid = f"{sls}-{alert}_{tanggal}_{jam_final}"
+
+                angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
+                match = df_raw[df_raw["unitno"].astype(str).str.contains(angka)]
+
+                if match.empty:
+                    continue
+
+                distrik = match.iloc[0]["distrik"]
+                ip = match.iloc[0]["device_ip"]
+
+                rows.append([
+                    tanggal_cek,
+                    pid,
+                    angka,
+                    distrik,
+                    sls,
+                    ip,
+                    alert,
+                    r["INTERVENSI - STATUS CONTEXT"],
+                    r["WAKTU KE SERVER GABUNGAN"],
+                    "",
+                    "",
+                    f"SHIFT {shift}",
+                    validated,
+                    url
+                ])
+
+            except:
+                continue
+
+        rows.sort(key=lambda x: x[1])
+        hasil = rows
+        last_rows = rows
 
     return render_template("report.html", hasil=hasil)
 
 
-# =========================
+# ==================================================
 # EXPORT
-# =========================
+# ==================================================
 @app.route("/export")
 def export_excel():
-
-    global last_rows
 
     if not last_rows:
         return "Tidak ada data"
 
-    df_export = pd.DataFrame(last_rows, columns=[
-        "Tanggal Pengecekan",
-        "PID",
-        "ID Unit",
-        "Distrik",
-        "Device Number",
-        "Device IP",
-        "Alert",
-        "Validasi OCR",
-        "Feedback Site",
-        "Validasi IOT Ops",
-        "Keterangan",
-        "Shift HO",
-        "Validated By",
-        "Link Video"
-    ])
+    df = pd.DataFrame(last_rows)
 
     output = BytesIO()
-    df_export.to_excel(output, index=False)
+    df.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name="reporting_harian.xlsx", as_attachment=True)
+    return send_file(output, download_name="report.xlsx", as_attachment=True)
 
 
 if __name__ == "__main__":
