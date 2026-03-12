@@ -20,7 +20,11 @@ def report():
         df = pd.read_excel(file)
 
         # cari kolom URL fleksibel
-        url_col = [c for c in df.columns if "video" in c.lower()][0]
+        url_cols = [c for c in df.columns if "video" in c.lower()]
+        if not url_cols:
+            return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
+
+        url_col = url_cols[0]
 
         rows = []
 
@@ -29,19 +33,18 @@ def report():
             try:
 
                 url = str(r[url_col]).strip()
-
                 if not url or "http" not in url:
                     continue
 
+                # =========================
+                # PARSING RAW DARI URL (FIX)
+                # =========================
                 parts = url.split("/")
 
-                if len(parts) < 3:
-                    continue
+                folder = parts[-2]  # CLOSEDEYES_20260310_001338
+                sls = parts[-3]     # SLS30I607
 
-                sls = parts[-3]
-                event_folder = parts[-2]
-
-                raw_format = f"{sls}-{event_folder}"
+                raw_format = f"{sls}-{folder}"
 
                 bagian1, tanggal, jam = raw_format.split("_")
                 sls_fix, alert = bagian1.split("-")
@@ -50,11 +53,15 @@ def report():
                 jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
 
+                # filter jam
                 if not (jam_awal <= jam_final <= jam_akhir):
                     continue
 
                 pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
 
+                # =========================
+                # MATCH RAWDATA VIA ANGKA
+                # =========================
                 angka = ''.join(filter(str.isdigit, str(r["KODE KENDARAAN"])))
                 match = df_raw[df_raw["ANGKA"] == angka]
 
