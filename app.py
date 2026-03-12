@@ -18,7 +18,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (LOGIC ASLI TIDAK DIUBAH)
+# ✅ MENU 1 — BULK (TIDAK DIUBAH)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -40,7 +40,7 @@ def index():
                 hasil = "✅ File laporan berhasil diupload"
 
         # =========================
-        # BULK CEK RAW (LOGIC AWAL)
+        # BULK CEK RAW
         # =========================
         if "raw" in request.form:
 
@@ -76,7 +76,6 @@ def index():
                     bagian1, tanggal, jam = raw.split("_")
                     unit_raw, pelanggaran = bagian1.split("-")
 
-                    # minus 1 jam
                     jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                     jam_final = jam_dt.strftime("%H%M%S")
 
@@ -118,7 +117,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL (STABLE FIX)
+# ✅ MENU 2 — REPORTING FINAL (FIXED TOTAL)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -138,14 +137,10 @@ def report():
             return render_template("report.html", hasil="❌ Upload file dulu")
 
         df = pd.read_excel(file)
-
-        # =========================
-        # NORMALISASI KOLOM
-        # =========================
         df.columns = df.columns.str.strip().str.upper()
 
-        if "URL VIDEO" not in df.columns:
-            return render_template("report.html", hasil=f"❌ Kolom tidak ada: {list(df.columns)}")
+        if "URL VIDEO" not in df.columns or "KODE KENDARAAN" not in df.columns:
+            return render_template("report.html", hasil="❌ Kolom wajib tidak ditemukan")
 
         rows = []
         total_data = 0
@@ -153,12 +148,7 @@ def report():
         for _, r in df.iterrows():
 
             try:
-
-                # =========================
-                # AMBIL URL
-                # =========================
                 url = str(r["URL VIDEO"]).strip()
-
                 if not url or "http" not in url:
                     continue
 
@@ -166,12 +156,9 @@ def report():
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]          # contoh: SLS30I614
-                folder = parts[-2]       # contoh: YAWNING_20260309_235021
+                sls = parts[-3]
+                folder = parts[-2]
 
-                # =========================
-                # PARSING PALING AMAN
-                # =========================
                 folder_clean = folder.replace(".mp4", "")
                 parts_folder = folder_clean.split("_")
 
@@ -182,9 +169,6 @@ def report():
                 tanggal = parts_folder[1]
                 jam = parts_folder[2]
 
-                # =========================
-                # FIX WAKTU (-1 JAM + TANGGAL IKUT)
-                # =========================
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
@@ -194,9 +178,7 @@ def report():
 
                 total_data += 1
 
-                # =========================
                 # FILTER SHIFT
-                # =========================
                 if shift == "1":
                     valid_jam = list(range(2,6)) + list(range(10,13))
                 elif shift == "2":
@@ -208,21 +190,18 @@ def report():
                     continue
 
                 # =========================
-                # MATCH RAWDATA VIA SLS
+                # MATCH RAWDATA VIA KENDARAAN (FIX TOTAL)
                 # =========================
-                angka = ''.join(filter(str.isdigit, sls))
+                kode = str(r["KODE KENDARAAN"]).strip()
+                angka = ''.join(filter(str.isdigit, kode))
 
                 match = df_raw[df_raw["ANGKA"] == angka]
-
                 if match.empty:
                     continue
 
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
-                # =========================
-                # PID FINAL
-                # =========================
                 pid = f"{sls}-{alert}_{tanggal_final}_{jam_final}"
 
                 rows.append([
@@ -240,28 +219,22 @@ def report():
                     url
                 ])
 
-            except Exception as e:
-                print("ERROR:", e)
+            except:
                 continue
 
-        # =========================
-        # JIKA KOSONG
-        # =========================
         if not rows:
             return render_template(
                 "report.html",
-                hasil=f"⚠️ Tidak ada data sesuai shift {shift}. Coba shift lain. (Total data terbaca: {total_data})"
+                hasil=f"⚠️ Tidak ada data sesuai shift {shift}. (Total terbaca: {total_data})"
             )
 
-        # =========================
-        # SORT BERDASARKAN WAKTU
-        # =========================
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
         hasil = rows
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
+
 
 # ==================================================
 # EXPORT
@@ -283,5 +256,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
-
