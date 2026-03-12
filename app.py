@@ -133,22 +133,56 @@ def report():
             return render_template("report.html", hasil="❌ Upload file dulu")
 
         df = pd.read_excel(file)
-        df.columns = df.columns.str.strip().str.upper()
 
-        if "URL VIDEO" not in df.columns or "KODE KENDARAAN" not in df.columns:
-            return render_template("report.html", hasil="❌ Kolom wajib tidak ditemukan")
+        print("KOLOM FILE:", df.columns.tolist())
+
+        # =========================
+        # AUTO DETECT KOLOM
+        # =========================
+        url_col = None
+        kode_col = None
+
+        for c in df.columns:
+
+            if "video" in str(c).lower():
+                url_col = c
+
+            if "kendaraan" in str(c).lower():
+                kode_col = c
+
+        if not url_col:
+            return render_template("report.html", hasil="❌ Kolom URL tidak ketemu")
+
+        if not kode_col:
+            return render_template("report.html", hasil="❌ Kolom kendaraan tidak ketemu")
 
         rows = []
+        terbaca = 0
 
         for _, r in df.iterrows():
 
             try:
-                url = str(r["URL VIDEO"]).strip()
 
-                if not url or "http" not in url:
+                # =========================
+                # HANDLE NAN + TYPE
+                # =========================
+                url_val = r[url_col]
+
+                if pd.isna(url_val):
                     continue
 
+                url = str(url_val).strip()
+
+                if not url.startswith("http"):
+                    continue
+
+                terbaca += 1
+
+                # =========================
+                # PARSING URL
+                # =========================
                 parts = url.split("/")
+
                 if len(parts) < 3:
                     continue
 
@@ -165,18 +199,20 @@ def report():
                 tanggal = parts_folder[1]
                 jam = parts_folder[2]
 
-                # minus 1 jam + tanggal ikut
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
                 tanggal_final = dt_final.strftime("%Y%m%d")
                 jam_final = dt_final.strftime("%H%M%S")
 
-                # MATCH RAWDATA VIA KENDARAAN (FINAL)
-                kode = str(r["KODE KENDARAAN"]).strip()
+                # =========================
+                # MATCH RAWDATA VIA KENDARAAN
+                # =========================
+                kode = str(r[kode_col]).strip()
                 angka = ''.join(filter(str.isdigit, kode))
 
                 match = df_raw[df_raw["ANGKA"] == angka]
+
                 if match.empty:
                     continue
 
@@ -200,11 +236,17 @@ def report():
                     url
                 ])
 
-            except:
+            except Exception as e:
+                print("ERROR:", e)
                 continue
 
+        print("TOTAL URL TERBACA:", terbaca)
+
         if not rows:
-            return render_template("report.html", hasil="⚠️ Tidak ada data terbaca")
+            return render_template(
+                "report.html",
+                hasil=f"⚠️ Data tidak terbaca. Total URL valid: {terbaca}"
+            )
 
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
@@ -234,3 +276,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
