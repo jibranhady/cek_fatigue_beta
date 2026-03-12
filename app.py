@@ -113,7 +113,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL (BERSIH)
+# ✅ MENU 2 — REPORTING FINAL (FIX TOTAL)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -132,16 +132,18 @@ def report():
         if file.filename == "":
             return render_template("report.html", hasil="❌ Upload file dulu")
 
+        # =========================
+        # BACA FILE
+        # =========================
         df = pd.read_excel(file)
 
-        # =========================
-        # cari kolom url video fleksibel
-        # =========================
-        url_cols = [c for c in df.columns if "video" in c.lower()]
-        if not url_cols:
-            return render_template("report.html", hasil="❌ Kolom URL VIDEO tidak ditemukan")
+        # normalisasi kolom
+        df.columns = df.columns.str.strip().str.upper()
 
-        url_col = url_cols[0]
+        if "URL VIDEO" not in df.columns:
+            return render_template("report.html", hasil=f"❌ Kolom tidak ketemu: {list(df.columns)}")
+
+        url_col = "URL VIDEO"
 
         rows = []
 
@@ -158,12 +160,14 @@ def report():
                     continue
 
                 parts = url.split("/")
-                sls = parts[-3]
-                folder = parts[-2]
 
-                raw_format = f"{sls}-{folder}"
-                bagian1, tanggal, jam = raw_format.split("_")
-                sls_fix, alert = bagian1.split("-")
+                if len(parts) < 3:
+                    continue
+
+                sls = parts[-3]
+                folder = parts[-2]  # CLOSEDEYES_20260310_001338
+
+                alert, tanggal, jam = folder.split("_")
 
                 # =========================
                 # KURANGI 1 JAM
@@ -199,14 +203,14 @@ def report():
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
-                pid = f"{sls_fix}-{alert}_{tanggal}_{jam_final}"
+                pid = f"{sls}-{alert}_{tanggal}_{jam_final}"
 
                 rows.append([
                     tanggal_cek,
                     pid,
                     angka,
                     distrik,
-                    sls_fix,
+                    sls,
                     ip,
                     alert,
                     r["INTERVENSI - STATUS CONTEXT"],
@@ -220,7 +224,7 @@ def report():
                 continue
 
         # =========================
-        # KALAU KOSONG
+        # KOSONG
         # =========================
         if not rows:
             return render_template("report.html", hasil="⚠️ Data belum masuk")
@@ -234,7 +238,6 @@ def report():
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-
 # ==================================================
 # EXPORT
 # ==================================================
@@ -255,4 +258,5 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
 
