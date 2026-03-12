@@ -118,7 +118,7 @@ def index():
 
 
 # ==================================================
-# ✅ MENU 2 — REPORTING FINAL (FIXED)
+# ✅ MENU 2 — REPORTING FINAL (STABLE FIX)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -139,6 +139,9 @@ def report():
 
         df = pd.read_excel(file)
 
+        # =========================
+        # NORMALISASI KOLOM
+        # =========================
         df.columns = df.columns.str.strip().str.upper()
 
         if "URL VIDEO" not in df.columns:
@@ -151,6 +154,9 @@ def report():
 
             try:
 
+                # =========================
+                # AMBIL URL
+                # =========================
                 url = str(r["URL VIDEO"]).strip()
 
                 if not url or "http" not in url:
@@ -160,15 +166,25 @@ def report():
                 if len(parts) < 3:
                     continue
 
-                sls = parts[-3]
-                folder = parts[-2]
+                sls = parts[-3]          # contoh: SLS30I614
+                folder = parts[-2]       # contoh: YAWNING_20260309_235021
 
-                if "_" not in folder:
+                # =========================
+                # PARSING PALING AMAN
+                # =========================
+                folder_clean = folder.replace(".mp4", "")
+                parts_folder = folder_clean.split("_")
+
+                if len(parts_folder) < 3:
                     continue
 
-                alert, tanggal, jam = folder.split("_")
+                alert = parts_folder[0]
+                tanggal = parts_folder[1]
+                jam = parts_folder[2]
 
-                # minus 1 jam + tanggal ikut
+                # =========================
+                # FIX WAKTU (-1 JAM + TANGGAL IKUT)
+                # =========================
                 dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
                 dt_final = dt_full - pd.Timedelta(hours=1)
 
@@ -178,7 +194,9 @@ def report():
 
                 total_data += 1
 
+                # =========================
                 # FILTER SHIFT
+                # =========================
                 if shift == "1":
                     valid_jam = list(range(2,6)) + list(range(10,13))
                 elif shift == "2":
@@ -189,7 +207,11 @@ def report():
                 if jam_int not in valid_jam:
                     continue
 
+                # =========================
+                # MATCH RAWDATA VIA SLS
+                # =========================
                 angka = ''.join(filter(str.isdigit, sls))
+
                 match = df_raw[df_raw["ANGKA"] == angka]
 
                 if match.empty:
@@ -198,6 +220,9 @@ def report():
                 distrik = match.iloc[0]["distrik"]
                 ip = match.iloc[0]["device_ip"]
 
+                # =========================
+                # PID FINAL
+                # =========================
                 pid = f"{sls}-{alert}_{tanggal_final}_{jam_final}"
 
                 rows.append([
@@ -215,22 +240,28 @@ def report():
                     url
                 ])
 
-            except:
+            except Exception as e:
+                print("ERROR:", e)
                 continue
 
+        # =========================
+        # JIKA KOSONG
+        # =========================
         if not rows:
             return render_template(
                 "report.html",
                 hasil=f"⚠️ Tidak ada data sesuai shift {shift}. Coba shift lain. (Total data terbaca: {total_data})"
             )
 
+        # =========================
+        # SORT BERDASARKAN WAKTU
+        # =========================
         rows.sort(key=lambda x: x[1].split("_")[-1])
 
         hasil = rows
         last_rows = rows
 
     return render_template("report.html", hasil=hasil)
-
 
 # ==================================================
 # EXPORT
@@ -252,4 +283,5 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
 
