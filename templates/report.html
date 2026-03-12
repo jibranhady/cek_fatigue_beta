@@ -74,7 +74,13 @@ body{background:#f4f6f9}
 <!-- RESULT -->
 <!-- ========================= -->
 
-{% if hasil %}
+{% if hasil is string %}
+
+<div class="alert alert-warning mt-4">
+{{ hasil }}
+</div>
+
+{% elif hasil %}
 
 <div class="card mt-4 p-4 shadow-sm">
 
@@ -119,25 +125,14 @@ body{background:#f4f6f9}
 <td>{{ r[8] }}</td>
 <td>{{ r[11] }}</td>
 <td>{{ r[12] }}</td>
-<td>
-<a href="{{ r[13] }}" target="_blank">Open</a>
-</td>
+<td><a href="{{ r[13] }}" target="_blank">Open</a></td>
 </tr>
 {% endfor %}
 
 </tbody>
-
 </table>
 
 </div>
-
 </div>
 
 {% endif %}
-
-</div>
-
-</body>
-</html>
-
-
