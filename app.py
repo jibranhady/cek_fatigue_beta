@@ -230,16 +230,28 @@ def report():
                 hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
             )
 
-        # 🔥 SORT AMAN
-        try:
-            rows.sort(key=lambda x: x[1].split("_")[-1])
-        except:
-            pass
+# =========================
+# JIKA ADA DATA
+# =========================
+if rows:
+    # SORT PALING AMAN
+    try:
+        rows = sorted(
+            rows,
+            key=lambda x: str(x[1]).split("_")[-1]
+        )
+    except:
+        pass
 
-        hasil = rows
-        last_rows = rows
+    hasil = rows
+    last_rows = rows
 
-    return render_template("report.html", hasil=hasil)
+else:
+
+    return render_template(
+        "report.html",
+        hasil=f"⚠️ Tidak ada data masuk | URL: {total_url} | MATCH: {total_match}"
+    ))
     
 
 # ==================================================
@@ -262,3 +274,4 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
+
