@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reporting Harian</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-4">
+
+<h3 class="mb-4">📊 Reporting Harian</h3>
+
+<form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm">
+
+<div class="row g-3">
+
+<div class="col-md-3">
+<label>Tanggal</label>
+<input type="date" name="tanggal" class="form-control" required>
+</div>
+
+<div class="col-md-2">
+<label>Shift</label>
+<select name="shift" class="form-control">
+<option>1</option>
+<option>2</option>
+<option>3</option>
+</select>
+</div>
+
+<div class="col-md-3">
+<label>Validated By</label>
+<input type="text" name="validated" class="form-control" required>
+</div>
+
+<div class="col-md-2">
+<label>Jam Awal</label>
+<input type="time" name="jam_awal" class="form-control" required>
+</div>
+
+<div class="col-md-2">
+<label>Jam Akhir</label>
+<input type="time" name="jam_akhir" class="form-control" required>
+</div>
+
+<div class="col-md-12">
+<label>Upload File</label>
+<input type="file" name="file" class="form-control" required>
+</div>
+
+</div>
+
+<button class="btn btn-primary mt-3">Generate</button>
+
+</form>
+
+
+{% if hasil %}
+
+<div class="card mt-4 p-4 shadow-sm">
+
+<div class="d-flex justify-content-between mb-3">
+<h5>Preview</h5>
+<a href="/export" class="btn btn-success">Export Excel</a>
+</div>
+
+<div class="table-responsive">
+
+<table class="table table-bordered">
+
+<thead class="table-dark">
+<tr>
+<th>Tanggal</th>
+<th>PID</th>
+<th>Unit</th>
+<th>Distrik</th>
+<th>SLS</th>
+<th>IP</th>
+<th>Alert</th>
+<th>OCR</th>
+<th>Feedback</th>
+<th>Shift</th>
+<th>Validated</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in hasil %}
+<tr>
+<td>{{ r[0] }}</td>
+<td>{{ r[1] }}</td>
+<td>{{ r[2] }}</td>
+<td>{{ r[3] }}</td>
+<td>{{ r[4] }}</td>
+<td>{{ r[5] }}</td>
+<td>{{ r[6] }}</td>
+<td>{{ r[7] }}</td>
+<td>{{ r[8] }}</td>
+<td>{{ r[11] }}</td>
+<td>{{ r[12] }}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+{% endif %}
+
+</div>
+
+</body>
+</html>
