@@ -20,7 +20,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (VERSI AWAL STABIL)
+# ✅ MENU 1 — BULK (FINAL)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -42,7 +42,7 @@ def index():
                 hasil = "✅ File laporan berhasil diupload"
 
         # =========================
-        # BULK CEK RAW (VERSI AWAL)
+        # BULK CEK RAW
         # =========================
         if "raw" in request.form:
 
@@ -55,12 +55,14 @@ def index():
                     "KODE KENDARAAN",
                     "WAKTU KEJADIAN",
                     "WAKTU KE SERVER GABUNGAN",
+                    "WAKTU INTERVENSI",
                     "INTERVENSI - STATUS CONTEXT"
                 ]
             )
 
             df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
             df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
+            df_event["WAKTU INTERVENSI"] = pd.to_datetime(df_event["WAKTU INTERVENSI"])
 
             df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
             df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
@@ -85,7 +87,7 @@ def index():
                     cek_unit = df_raw[df_raw["deviceid_clean"] == unit_raw]
 
                     if cek_unit.empty:
-                        rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", ""])
+                        rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", "", ""])
                         continue
 
                     nama_unit = cek_unit.iloc[0]["unitno"]
@@ -98,7 +100,7 @@ def index():
                     ]
 
                     if cari.empty:
-                        rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", ""])
+                        rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", "", ""])
                     else:
                         row = cari.iloc[0]
                         rows.append([
@@ -107,11 +109,12 @@ def index():
                             pelanggaran,
                             row["WAKTU KEJADIAN"],
                             row["WAKTU KE SERVER GABUNGAN"],
+                            row["WAKTU INTERVENSI"],
                             row["INTERVENSI - STATUS CONTEXT"]
                         ])
 
                 except:
-                    rows.append([raw, "❌ Format salah", "", "", "", ""])
+                    rows.append([raw, "❌ Format salah", "", "", "", "", ""])
 
             hasil = rows
             last_rows = rows
@@ -120,7 +123,7 @@ def index():
 
 
 # ==================================================
-# ✅ REPORT — INPUT LANGSUNG URL (FINAL PALING SIMPLE)
+# ✅ REPORT — INPUT URL
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -184,7 +187,7 @@ def report():
                     sls,
                     ip,
                     alert,
-                    "",
+                    "",  # waktu intervensi kosong (ga ada di URL)
                     "",
                     f"SHIFT {shift}",
                     validated,
