@@ -20,7 +20,7 @@ last_rows = []
 
 
 # ==================================================
-# ✅ MENU 1 — BULK (FINAL)
+# ✅ MENU 1 — BULK (FINAL STABIL)
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -34,7 +34,6 @@ def index():
         # UPLOAD FILE EVENT
         # =========================
         if "file" in request.files:
-
             file = request.files["file"]
 
             if file.filename != "":
@@ -60,9 +59,11 @@ def index():
                 ]
             )
 
-            df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
-            df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
-            df_event["WAKTU INTERVENSI"] = pd.to_datetime(df_event["WAKTU INTERVENSI"])
+            # 🔥 FIX SEMUA KOLOM WAKTU (ANTI CRASH)
+            waktu_cols = ["WAKTU KEJADIAN", "WAKTU KE SERVER GABUNGAN", "WAKTU INTERVENSI"]
+
+            for col in waktu_cols:
+                df_event[col] = pd.to_datetime(df_event[col], errors="coerce")
 
             df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
             df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
@@ -73,10 +74,12 @@ def index():
             for raw in request.form["raw"].splitlines():
 
                 raw = raw.strip().upper()
+
                 if not raw:
                     continue
 
                 try:
+
                     bagian1, tanggal, jam = raw.split("_")
                     unit_raw, pelanggaran = bagian1.split("-")
 
@@ -102,14 +105,16 @@ def index():
                     if cari.empty:
                         rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", "", ""])
                     else:
+
                         row = cari.iloc[0]
+
                         rows.append([
                             raw,
                             nama_unit,
                             pelanggaran,
-                            row["WAKTU KEJADIAN"],
-                            row["WAKTU KE SERVER GABUNGAN"],
-                            row["WAKTU INTERVENSI"],
+                            row["WAKTU KEJADIAN"] if pd.notna(row["WAKTU KEJADIAN"]) else "",
+                            row["WAKTU KE SERVER GABUNGAN"] if pd.notna(row["WAKTU KE SERVER GABUNGAN"]) else "",
+                            row["WAKTU INTERVENSI"] if pd.notna(row["WAKTU INTERVENSI"]) else "",
                             row["INTERVENSI - STATUS CONTEXT"]
                         ])
 
@@ -123,7 +128,7 @@ def index():
 
 
 # ==================================================
-# ✅ REPORT — INPUT URL
+# ✅ REPORT — INPUT URL (FINAL STABIL)
 # ==================================================
 @app.route("/report", methods=["GET", "POST"])
 def report():
@@ -187,7 +192,7 @@ def report():
                     sls,
                     ip,
                     alert,
-                    "",  # waktu intervensi kosong (ga ada di URL)
+                    "",
                     "",
                     f"SHIFT {shift}",
                     validated,
@@ -199,7 +204,6 @@ def report():
 
         if not rows:
             hasil = "⚠️ Tidak ada data terbaca"
-
         else:
             rows.sort(key=lambda x: x[1])
             hasil = rows
@@ -228,4 +232,3 @@ def export_excel():
 
 if __name__ == "__main__":
     app.run()
-
