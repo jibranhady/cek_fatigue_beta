@@ -1,26 +1,26 @@
 from flask import Flask, render_template, request, send_file
 import pandas as pd
-import os
+from sqlalchemy import create_engine
 from io import BytesIO
 
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_PATH = os.path.join(BASE_DIR, "upload.xlsx")
+# =========================
+# DATABASE
+# =========================
+conn_str = "postgresql://postgres:matisaja123@db.xjnyjskeauyfpqioanse.supabase.co:5432/postgres"
+engine = create_engine(conn_str)
 
 # =========================
-# LOAD RAWDATA
+# RAWDATA
 # =========================
-df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
-
-# normalize deviceid SEKALI SAJA
+df_raw = pd.read_excel("Rawdata.xlsx")
 df_raw["deviceid_clean"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 
 last_rows = []
 
-
 # ==================================================
-# ✅ MENU 1 — BULK (FINAL STABIL)
+# BULK RAW
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -30,186 +30,75 @@ def index():
 
     if request.method == "POST":
 
-        # =========================
-        # UPLOAD FILE EVENT
-        # =========================
-        if "file" in request.files:
-            file = request.files["file"]
+        raw_text = request.form["raw"]
+        site = request.form["site"]
 
-            if file.filename != "":
-                file.save(UPLOAD_PATH)
-                hasil = "✅ File laporan berhasil diupload"
+        # 🔥 PILIH TABLE BERDASARKAN SITE
+        if site == "brcb":
+            table_name = "tbl_event_brcb"
+        else:
+            table_name = "tbl_event_brcg"
 
-        # =========================
-        # BULK CEK RAW
-        # =========================
-        if "raw" in request.form:
+        df_event = pd.read_sql(f"SELECT * FROM {table_name}", engine)
 
-            if not os.path.exists(UPLOAD_PATH):
-                return render_template("index.html", hasil="❌ Upload laporan dulu")
-
-            df_event = pd.read_excel(
-                UPLOAD_PATH,
-                usecols=[
-                    "KODE KENDARAAN",
-                    "WAKTU KEJADIAN",
-                    "WAKTU KE SERVER GABUNGAN",
-                    "WAKTU INTERVENSI",
-                    "INTERVENSI - STATUS CONTEXT"
-                ]
-            )
-
-            # 🔥 FIX SEMUA KOLOM WAKTU (ANTI CRASH)
-            waktu_cols = ["WAKTU KEJADIAN", "WAKTU KE SERVER GABUNGAN", "WAKTU INTERVENSI"]
-
-            for col in waktu_cols:
-                df_event[col] = pd.to_datetime(df_event[col], errors="coerce")
-
-            df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
-            df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
-            df_event["TANGGAL"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
-
-            rows = []
-
-            for raw in request.form["raw"].splitlines():
-
-                raw = raw.strip().upper()
-
-                if not raw:
-                    continue
-
-                try:
-
-                    bagian1, tanggal, jam = raw.split("_")
-                    unit_raw, pelanggaran = bagian1.split("-")
-
-                    # 🔥 RAW dikurangi 1 jam
-                    jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
-                    jam_final = jam_dt.strftime("%H%M%S")
-
-                    cek_unit = df_raw[df_raw["deviceid_clean"] == unit_raw]
-
-                    if cek_unit.empty:
-                        rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", "", ""])
-                        continue
-
-                    nama_unit = cek_unit.iloc[0]["unitno"]
-                    angka_unit = ''.join(filter(str.isdigit, nama_unit))
-
-                    cari = df_event[
-                        (df_event["ANGKA_UNIT"] == angka_unit) &
-                        (df_event["JAM"] == jam_final) &
-                        (df_event["TANGGAL"] == tanggal)
-                    ]
-
-                    if cari.empty:
-                        rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "", "", ""])
-                    else:
-
-                        row = cari.iloc[0]
-
-                        rows.append([
-                            raw,
-                            nama_unit,
-                            pelanggaran,
-                            row["WAKTU KEJADIAN"] if pd.notna(row["WAKTU KEJADIAN"]) else "",
-                            row["WAKTU KE SERVER GABUNGAN"] if pd.notna(row["WAKTU KE SERVER GABUNGAN"]) else "",
-                            row["WAKTU INTERVENSI"] if pd.notna(row["WAKTU INTERVENSI"]) else "",
-                            row["INTERVENSI - STATUS CONTEXT"]
-                        ])
-
-                except:
-                    rows.append([raw, "❌ Format salah", "", "", "", "", ""])
-
-            hasil = rows
-            last_rows = rows
-
-    return render_template("index.html", hasil=hasil)
-
-
-# ==================================================
-# ✅ REPORT — INPUT URL (FINAL STABIL)
-# ==================================================
-@app.route("/report", methods=["GET", "POST"])
-def report():
-
-    global last_rows
-    hasil = None
-
-    if request.method == "POST":
-
-        tanggal_cek = request.form["tanggal"]
-        shift = request.form["shift"]
-        validated = request.form["validated"]
-
-        url_text = request.form["urls"]
-
-        if not url_text.strip():
-            return render_template("report.html", hasil="❌ Tidak ada URL")
+        df_event["ANGKA_UNIT"] = df_event["kode_kendaraan"].astype(str).str.extract(r"(\d+)")
+        df_event["JAM"] = df_event["waktu_kejadian"].dt.strftime("%H%M%S")
+        df_event["TANGGAL"] = df_event["waktu_kejadian"].dt.strftime("%Y%m%d")
 
         rows = []
 
-        for url in url_text.splitlines():
+        for raw in raw_text.splitlines():
 
-            url = url.strip()
-
-            if not url.startswith("http"):
+            raw = raw.strip().upper()
+            if not raw:
                 continue
 
             try:
+                bagian1, tanggal, jam = raw.split("_")
+                unit_raw, pelanggaran = bagian1.split("-")
 
-                parts = url.split("/")
-                if len(parts) < 3:
+                dt = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
+                dt_fix = dt - pd.Timedelta(hours=1)
+
+                tanggal_fix = dt_fix.strftime("%Y%m%d")
+                jam_fix = dt_fix.strftime("%H%M%S")
+
+                cek = df_raw[df_raw["deviceid_clean"] == unit_raw]
+
+                if cek.empty:
+                    rows.append([raw, "❌ Unit tidak ditemukan", "", "", "", "", ""])
                     continue
 
-                sls = parts[-3].strip().upper()
-                folder = parts[-2]
+                angka = ''.join(filter(str.isdigit, cek.iloc[0]["unitno"]))
 
-                folder_clean = folder.replace(".mp4", "")
-                alert, tanggal, jam = folder_clean.split("_")
+                cari = df_event[
+                    (df_event["ANGKA_UNIT"] == angka) &
+                    (df_event["JAM"] == jam_fix) &
+                    (df_event["TANGGAL"] == tanggal_fix)
+                ]
 
-                # 🔥 FIX WAKTU (-1 JAM)
-                dt_full = pd.to_datetime(tanggal + jam, format="%Y%m%d%H%M%S")
-                dt_final = dt_full - pd.Timedelta(hours=1)
+                if cari.empty:
+                    rows.append([raw, angka, pelanggaran, "❌ Tidak ditemukan", "", "", ""])
+                else:
+                    row = cari.iloc[0]
 
-                tanggal_final = dt_final.strftime("%Y%m%d")
-                jam_final = dt_final.strftime("%H%M%S")
-
-                match = df_raw[df_raw["deviceid_clean"] == sls]
-
-                if match.empty:
-                    continue
-
-                distrik = match.iloc[0]["distrik"]
-                ip = match.iloc[0]["device_ip"]
-
-                pid = f"{sls}-{alert}_{tanggal_final}_{jam_final}"
-
-                rows.append([
-                    tanggal_cek,
-                    pid,
-                    distrik,
-                    sls,
-                    ip,
-                    alert,
-                    "",
-                    "",
-                    f"SHIFT {shift}",
-                    validated,
-                    url
-                ])
+                    rows.append([
+                        raw,
+                        angka,
+                        pelanggaran,
+                        row["waktu_kejadian"],
+                        row["waktu_server_gabungan"],
+                        row["waktu_intervensi"],
+                        row["status_context"]
+                    ])
 
             except:
-                continue
+                rows.append([raw, "❌ Format salah", "", "", "", "", ""])
 
-        if not rows:
-            hasil = "⚠️ Tidak ada data terbaca"
-        else:
-            rows.sort(key=lambda x: x[1])
-            hasil = rows
-            last_rows = rows
+        hasil = rows
+        last_rows = rows
 
-    return render_template("report.html", hasil=hasil)
+    return render_template("index.html", hasil=hasil)
 
 
 # ==================================================
