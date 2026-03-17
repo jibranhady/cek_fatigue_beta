@@ -10,7 +10,7 @@ app = Flask(__name__)
 # ==================================================
 # CONFIG DB (SUPABASE)
 # ==================================================
-DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:mat1saja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
 engine = create_engine(
     DB_URL, 
     pool_pre_ping=True, 
