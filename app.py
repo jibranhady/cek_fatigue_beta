@@ -4,7 +4,6 @@ from sqlalchemy import create_engine, text
 from io import BytesIO
 import os
 from datetime import datetime, timedelta
-import urllib3
 
 # Matikan warning SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
