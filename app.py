@@ -4,14 +4,17 @@ from sqlalchemy import create_engine, text
 from io import BytesIO
 import os
 from datetime import datetime, timedelta
+import urllib3
+
+# Matikan warning SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 
 # ==================================================
-# 1. DB CONNECTION (SUPABASE - REVISED)
+# CONFIG DB (SUPABASE)
 # ==================================================
-# Menggunakan pool_pre_ping agar tidak "server closed connection"
-DB_URL = "postgresql+psycopg2://postgres:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:mat1saja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
 engine = create_engine(
     DB_URL, 
     pool_pre_ping=True, 
@@ -19,25 +22,27 @@ engine = create_engine(
 )
 
 # ==================================================
-# 2. LOAD RAWDATA (LOKAL)
+# LOAD RAWDATA MAPPING (LOKAL)
 # ==================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Pastikan Rawdata.xlsx ada di folder yang sama dengan app.py
+# Load mapping deviceid ke unitno sekali saja saat startup
 try:
     df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
-    df_raw["deviceid_clean"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
+    # Bersihkan kolom agar matching lebih akurat
+    df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 except Exception as e:
-    print(f"Error loading Rawdata.xlsx: {e}")
+    print(f"Error: Rawdata.xlsx tidak ditemukan atau rusak. {e}")
     df_raw = pd.DataFrame()
 
-# Penyimpanan sementara hasil query untuk fitur export
-storage = {"last_rows": []}
+# Global variable untuk simpan hasil terakhir (buat export)
+last_rows = []
 
 # ==================================================
-# ✅ CORE LOGIC: BULK MATCHING
+# LOGIC UTAMA
 # ==================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global last_rows
     hasil = None
 
     if request.method == "POST":
@@ -45,119 +50,113 @@ def index():
         site = request.form.get("site", "brcb")
 
         if not raw_text.strip():
-            return render_template("index.html", hasil=None, error="❌ Masukkan teks RAW!")
+            return render_template("index.html", hasil="❌ Tidak ada input RAW")
 
-        # Pilih Tabel berdasarkan radio button/select
-        table = "tbl_brcb" if site == "brcb" else "tbl_brcg"
+        # 1. Pilih Tabel Database berdasarkan input site
+        table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
-        # Ambil Data dari Database (Hanya ambil kolom yang perlu agar hemat RAM)
+        # 2. AMBIL DATA DARI DATABASE (Nggantiin Upload Manual)
         try:
             with engine.connect() as conn:
-                query = f'SELECT * FROM {table}'
-                df_event = pd.read_sql(query, conn)
+                df_event = pd.read_sql(text(f"SELECT * FROM {table_name}"), conn)
         except Exception as e:
-            return render_template("index.html", error=f"❌ Database Error: {e}")
+            return render_template("index.html", hasil=f"❌ DB Error: {e}")
 
         if df_event.empty:
-            return render_template("index.html", error="❌ Database Kosong (Gunakan Downloader dulu)")
+            return render_template("index.html", hasil=f"❌ Database {table_name} kosong.")
 
-        # --- NORMALISASI DATA DATABASE ---
-        waktu_cols = ["WAKTU KEJADIAN", "WAKTU KE SERVER GABUNGAN", "WAKTU INTERVENSI"]
-        for col in waktu_cols:
-            if col in df_event.columns:
-                df_event[col] = pd.to_datetime(df_event[col], errors="coerce")
-
-        # Ekstrak angka dari KODE KENDARAAN (misal: "DT123" -> "123")
-        df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)").fillna("")
-        df_event["JAM_STR"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
-        df_event["TANGGAL_STR"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
+        # 3. PRE-PROCESSING DATA EVENT (Sesuai Logic Lama)
+        df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
+        df_event["WAKTU KE SERVER GABUNGAN"] = pd.to_datetime(df_event["WAKTU KE SERVER GABUNGAN"])
+        
+        # Ekstrak angka saja dari KODE KENDARAAN (Misal: DT123 -> 123)
+        df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
+        df_event["JAM"] = df_event["WAKTU KEJADIAN"].dt.strftime("%H%M%S")
+        df_event["TANGGAL"] = df_event["WAKTU KEJADIAN"].dt.strftime("%Y%m%d")
 
         rows = []
-        # --- LOOP PROSES RAW TEXT ---
-        for raw_line in raw_text.splitlines():
-            raw_line = raw_line.strip().upper()
-            if not raw_line: continue
+
+        # 4. LOOPING RAW TEXT (Logic Lama Kamu)
+        for raw in raw_text.splitlines():
+            raw = raw.strip().upper()
+            if not raw: continue
 
             try:
-                # Format: UNIT-PELANGGARAN_TANGGAL_JAM (Contoh: DSM01-FATIGUE_20240318_100000)
-                bagian_depan, tanggal_raw, jam_raw = raw_line.split("_")
-                unit_raw, pelanggaran = bagian_depan.split("-")
+                # Format: SLS30I614-YAWNING_20260309_235021
+                bagian1, tanggal, jam = raw.split("_")
+                unit_raw, pelanggaran = bagian1.split("-")
 
-                # FIX -1 JAM (Logika bisnis: waktu di RAW biasanya 1 jam lebih cepat)
-                jam_dt = datetime.strptime(jam_raw, "%H%M%S") - timedelta(hours=1)
+                # Logic Kurangi 1 Jam (Sesuai kode lama kamu)
+                jam_dt = pd.to_datetime(jam, format="%H%M%S") - pd.Timedelta(hours=1)
                 jam_final = jam_dt.strftime("%H%M%S")
 
-                # Cari di file Rawdata.xlsx (Mapping DeviceID ke UnitNo)
-                cek_unit = df_raw[df_raw["deviceid_clean"] == unit_raw]
+                # CEK UNIT KE MAPPING RAWDATA.XLSX
+                cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
 
                 if cek_unit.empty:
-                    rows.append({
-                        "raw": raw_line, "unit": "❌ Tak Ditemukan", "pelanggaran": pelanggaran,
-                        "status": "DeviceID Salah", "waktu": "", "server": "", "intervensi": ""
-                    })
+                    # [RAW, Unit, Alert, Kejadian, Gabungan, Status/Intervensi, Label]
+                    rows.append([raw, "❌ Unit Tidak Terdaftar", pelanggaran, "-", "-", "-", "ERROR"])
                     continue
 
-                nama_unit = str(cek_unit.iloc[0]["unitno"])
-                # Ambil angka saja dari nama unit (misal: "PAMA 123" -> "123")
-                angka_unit = ''.join(filter(str.isdigit, nama_unit))
+                nama_unit = cek_unit.iloc[0]["unitno"]
+                angka_unit = ''.join(filter(str.isdigit, str(nama_unit)))
 
-                # --- MATCHING KE DATA DATABASE ---
-                mask = (
+                # CARI EVENT DI DATA DATABASE
+                cari = df_event[
                     (df_event["ANGKA_UNIT"] == angka_unit) &
-                    (df_event["JAM_STR"] == jam_final) &
-                    (df_event["TANGGAL_STR"] == tanggal_raw)
-                )
-                cari = df_event[mask]
+                    (df_event["JAM"] == jam_final) &
+                    (df_event["TANGGAL"] == tanggal)
+                ]
 
                 if cari.empty:
-                    rows.append({
-                        "raw": raw_line, "unit": nama_unit, "pelanggaran": pelanggaran,
-                        "status": "❌ Tak Ada di DB", "waktu": "-", "server": "-", "intervensi": "-"
-                    })
+                    rows.append([raw, nama_unit, pelanggaran, "❌ Tidak ditemukan", "-", "-", "FALSE"])
                 else:
-                    match = cari.iloc[0]
-                    rows.append({
-                        "raw": raw_line,
-                        "unit": nama_unit,
-                        "pelanggaran": pelanggaran,
-                        "status": "✅ MATCH",
-                        "waktu": match["WAKTU KEJADIAN"],
-                        "server": match["WAKTU KE SERVER GABUNGAN"],
-                        "intervensi": match["WAKTU INTERVENSI"],
-                        "context": match.get("INTERVENSI - STATUS CONTEXT", "-")
-                    })
+                    row_db = cari.iloc[0]
+                    # Format intervensi (ambil status context)
+                    status_context = row_db.get("INTERVENSI - STATUS CONTEXT", "-")
+                    
+                    rows.append([
+                        raw,
+                        nama_unit,
+                        pelanggaran,
+                        row_db["WAKTU KEJADIAN"].strftime('%Y-%m-%d %H:%M:%S'),
+                        row_db["WAKTU KE SERVER GABUNGAN"].strftime('%H:%M:%S'),
+                        "-", # Waktu intervensi jika ada kolomnya
+                        str(status_context).upper() # Menghasilkan TRUE/FALSE untuk Badge
+                    ])
 
-            except Exception as e:
-                rows.append({
-                    "raw": raw_line, "unit": "Format Error", "pelanggaran": "-", 
-                    "status": f"❌ {str(e)}", "waktu": "", "server": "", "intervensi": ""
-                })
+            except Exception:
+                rows.append([raw, "❌ Format salah", "-", "-", "-", "-", "ERROR"])
 
         hasil = rows
-        storage["last_rows"] = rows
+        last_rows = rows  # Simpan untuk export
 
     return render_template("index.html", hasil=hasil)
 
 # ==================================================
-# EXPORT TO EXCEL
+# EXPORT EXCEL
 # ==================================================
 @app.route("/export")
 def export_excel():
-    if not storage["last_rows"]:
-        return "Tidak ada data untuk di-export", 400
+    global last_rows
+    if not last_rows:
+        return "Tidak ada data untuk diexport"
 
-    df_export = pd.DataFrame(storage["last_rows"])
-    
+    df_export = pd.DataFrame(last_rows, columns=[
+        "RAW", "Nama Unit", "Pelanggaran", "Waktu Kejadian", 
+        "Masuk Gabungan", "Waktu Intervensi", "Status Context"
+    ])
+
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False, sheet_name='Report')
-    
+        df_export.to_excel(writer, index=False)
     output.seek(0)
+
     return send_file(
-        output, 
-        download_name=f"Report_Matching_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx", 
+        output,
+        download_name=f"Hasil_Cek_Raw_{datetime.now().strftime('%Y%m%d')}.xlsx",
         as_attachment=True
     )
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
