@@ -9,7 +9,7 @@ app = Flask(__name__)
 # =========================
 # DB CONNECTION (SUPABASE)
 # =========================
-DB_URL = "postgresql://postgres.xjnyjskeauyfpqioanse:[matisaja123]@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
+DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
 engine = create_engine(DB_URL)
 
 # =========================
