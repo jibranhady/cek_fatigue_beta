@@ -5,9 +5,6 @@ from io import BytesIO
 import os
 from datetime import datetime, timedelta
 
-# Matikan warning SSL
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 app = Flask(__name__)
 
 # ==================================================
