@@ -1,176 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Cek RAW</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-
-body{
-background:#f4f6f9
-}
-
-.card-box{
-border-radius:12px
-}
-
-.badge-true{
-background:#198754
-}
-
-.badge-false{
-background:#dc3545
-}
-
-textarea{
-font-family:monospace
-}
-
-</style>
-
+    <meta charset="UTF-8">
+    <title>Cek RAW - Fatigue Tools</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; }
+        .badge-true { background: #198754; color: white; }
+        .badge-false { background: #dc3545; color: white; }
+        textarea { font-family: 'Courier New', monospace; font-size: 14px; }
+        .table-responsive { max-height: 600px; overflow-y: auto; }
+    </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg bg-dark navbar-dark shadow-sm">
-<div class="container">
-<a class="navbar-brand fw-bold" href="/">Fatigue Tools</a>
-
-<div>
-<a href="/" class="btn btn-outline-light btn-sm">Bulk Check</a>
-<a href="/report" class="btn btn-warning btn-sm">Reporting</a>
-</div>
-</div>
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">Fatigue Tools</a>
+        <div>
+            <a href="/" class="btn btn-outline-light btn-sm">Bulk Check</a>
+            <a href="#" class="btn btn-warning btn-sm">Reporting</a>
+        </div>
+    </div>
 </nav>
 
-
 <div class="container mt-4">
+    <h3 class="mb-3">🔎 Bulk Cek RAW</h3>
 
-<h3 class="mb-3">🔎 Bulk Cek RAW</h3>
+    <div class="card p-4 shadow-sm border-0">
+        <form method="post">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="fw-semibold mb-2">Pilih Site</label>
+                    <select name="site" class="form-select" required>
+                        <option value="brcb">BRCB (BMO)</option>
+                        <option value="brcg">BRCG (GMO)</option>
+                    </select>
+                </div>
+            </div>
 
-<!-- ================= BULK ================= -->
-<div class="card p-4 shadow-sm">
+            <label class="fw-semibold mb-2">Paste RAW Text</label>
+            <textarea name="raw" id="rawInput" class="form-control" rows="6" 
+                      placeholder="Contoh: SLS30I614-YAWNING_20260309_235021"></textarea>
 
-<form method="post">
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary px-5 fw-bold">Cek Sekarang</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('rawInput').value=''">Clear</button>
+            </div>
+        </form>
+    </div>
 
-<!-- 🔥 PILIH SITE -->
-<label class="fw-semibold mb-2">Pilih Site</label>
-<select name="site" class="form-select mb-3" required>
-<option value="brcb">BRCB</option>
-<option value="brcg">BRCG</option>
-</select>
+    {% if hasil %}
+    <div class="card mt-4 p-4 shadow-sm border-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0 fw-bold">Hasil Analisis</h5>
+            {% if hasil is not string %}
+                <a href="/export" class="btn btn-success btn-sm px-3">Export to Excel</a>
+            {% endif %}
+        </div>
 
-<label class="fw-semibold mb-2">Paste RAW</label>
-
-<textarea 
-name="raw" 
-id="rawInput" 
-class="form-control" 
-rows="6"
-placeholder="Contoh:
-SLS30I614-YAWNING_20260309_235021
-SLS30I620-MICROSLEEP_20260309_224500"></textarea>
-
-<div class="d-flex gap-2 mt-3">
-
-<button name="bulk" value="1" class="btn btn-success w-100">
-Cek Semua
-</button>
-
-<button type="button" class="btn btn-outline-secondary w-100"
-onclick="document.getElementById('rawInput').value=''">
-Clear
-</button>
-
-</div>
-
-</form>
-
-</div>
-
-
-<!-- ================= RESULT ================= -->
-{% if hasil %}
-
-<div class="card mt-4 p-4 shadow-sm">
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-<h5 class="mb-0">Hasil</h5>
-
-{% if hasil is not string %}
-<a href="/export" class="btn btn-success btn-sm">Export Excel</a>
-{% endif %}
-
-</div>
-
-
-{% if hasil is string %}
-
-<div class="alert alert-warning">{{ hasil }}</div>
-
-{% else %}
-
-<div class="table-responsive">
-
-<table class="table table-bordered table-striped table-hover align-middle">
-
-<thead class="table-dark text-center">
-<tr>
-<th>RAW</th>
-<th>Unit</th>
-<th>Alert</th>
-<th>Waktu Kejadian</th>
-<th>Waktu Server</th>
-<th>Waktu Intervensi</th>
-<th>Status</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for r in hasil %}
-<tr>
-
-<td>{{ r[0] }}</td>
-<td>{{ r[1] }}</td>
-<td>{{ r[2] }}</td>
-<td>{{ r[3] }}</td>
-<td>{{ r[4] }}</td>
-<td>{{ r[5] }}</td>
-
-<td class="text-center">
-
-{% if r[6]|string|upper == "TRUE" %}
-<span class="badge badge-true">TRUE</span>
-{% elif r[6]|string|upper == "FALSE" %}
-<span class="badge badge-false">FALSE</span>
-{% else %}
-<span class="badge bg-secondary">{{ r[6] }}</span>
-{% endif %}
-
-</td>
-
-</tr>
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
-{% endif %}
-
-</div>
-
-{% endif %}
-
+        {% if hasil is string %}
+            <div class="alert alert-danger">{{ hasil }}</div>
+        {% else %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark text-center">
+                        <tr>
+                            <th style="font-size: 12px;">RAW STRING</th>
+                            <th>Unit</th>
+                            <th>Alert</th>
+                            <th>Waktu Kejadian</th>
+                            <th>Server</th>
+                            <th>Intervensi</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in hasil %}
+                        <tr>
+                            <td class="small text-muted">{{ r[0] }}</td>
+                            <td class="fw-bold">{{ r[1] }}</td>
+                            <td><span class="badge bg-info text-dark">{{ r[2] }}</span></td>
+                            <td class="text-center">{{ r[3] }}</td>
+                            <td class="text-center">{{ r[4] }}</td>
+                            <td class="text-center">{{ r[5] }}</td>
+                            <td class="text-center">
+                                {% if r[6] == "TRUE" %}
+                                    <span class="badge badge-true px-3">MATCH</span>
+                                {% elif r[6] == "FALSE" %}
+                                    <span class="badge badge-false px-3">NOT FOUND</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ r[6] }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 
 <script>
-document.getElementById("rawInput").focus();
+    document.getElementById("rawInput").focus();
 </script>
 
 </body>
