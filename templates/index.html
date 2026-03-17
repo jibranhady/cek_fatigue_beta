@@ -50,26 +50,17 @@ font-family:monospace
 
 <h3 class="mb-3">🔎 Bulk Cek RAW</h3>
 
-<!-- ================= UPLOAD ================= -->
-<div class="card p-4 shadow-sm mb-4">
-
-<form method="post" enctype="multipart/form-data">
-
-<label class="mb-2 fw-semibold">Upload File Event</label>
-
-<input class="form-control mb-3" type="file" name="file" required>
-
-<button class="btn btn-primary">Upload</button>
-
-</form>
-
-</div>
-
-
 <!-- ================= BULK ================= -->
 <div class="card p-4 shadow-sm">
 
 <form method="post">
+
+<!-- 🔥 PILIH SITE -->
+<label class="fw-semibold mb-2">Pilih Site</label>
+<select name="site" class="form-select mb-3" required>
+<option value="brcb">BRCB</option>
+<option value="brcg">BRCG</option>
+</select>
 
 <label class="fw-semibold mb-2">Paste RAW</label>
 
