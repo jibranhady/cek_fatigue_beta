@@ -11,7 +11,7 @@ app = Flask(__name__)
 # 1. DB CONNECTION (SUPABASE - REVISED)
 # ==================================================
 # Menggunakan pool_pre_ping agar tidak "server closed connection"
-DB_URL = "postgresql+psycopg2://postgres:mat1saja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DB_URL = "postgresql+psycopg2://postgres:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
 engine = create_engine(
     DB_URL, 
     pool_pre_ping=True, 
