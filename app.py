@@ -135,13 +135,19 @@ def index():
                     # ==========================
                     # STATUS (BOOLEAN SAFE)
                     # ==========================
-                    status_raw = res.get("INTERVENSI - STATUS CONTEXT")
+                    status_val = res.get("INTERVENSI - STATUS CONTEXT")
+                    # Konversi ke string, hapus spasi, dan buat huruf besar semua
+                    status_str = str(status_val).strip().upper() if pd.notnull(status_val) else "EMPTY"
 
-                    status_context = (
-                        "TRUE" if status_raw is True else
-                        "FALSE" if status_raw is False else
-                        "NOT FOUND"
-                    )
+                    if status_str in ["TRUE", "T", "YES", "1"]:
+                        status_context = "TRUE"
+                    elif status_str in ["FALSE", "F", "NO", "0"]:
+                        status_context = "FALSE"
+                    elif status_str == "EMPTY" or status_str == "NONE" or status_str == "NAN":
+                        status_context = "NOT FOUND"
+                    else:
+                        # Jika isinya teks lain, tampilkan apa adanya
+                        status_context = status_str
 
                     # ==========================
                     # WAKTU INTERVENSI (TEXT SAFE)
