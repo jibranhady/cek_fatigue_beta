@@ -51,7 +51,7 @@ def index():
         table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
         # ==================================================
-        # AMBIL DATA DB (24 JAM TERAKHIR BIAR RINGAN)
+        # AMBIL DATA DB (24 JAM TERAKHIR)
         # ==================================================
         try:
             with engine.connect() as conn:
@@ -64,14 +64,12 @@ def index():
             return render_template("index.html", error=f"❌ DB Error: {e}")
 
         if df_event.empty:
-            return render_template("index.html", error=f"❌ Database kosong (24 jam terakhir).")
+            return render_template("index.html", error="❌ Database kosong (24 jam terakhir).")
 
         # ==================================================
         # PREPROCESS DATA DB
         # ==================================================
         df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"]).dt.tz_localize(None)
-
-        # Ambil angka unit
         df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
 
         rows = []
@@ -133,7 +131,30 @@ def index():
                     ])
                 else:
                     res = match.iloc[0]
-                    status_context = str(res.get("INTERVENSI - STATUS CONTEXT", "-")).upper()
+
+                    # ==========================
+                    # STATUS (BOOLEAN SAFE)
+                    # ==========================
+                    status_raw = res.get("INTERVENSI - STATUS CONTEXT")
+
+                    status_context = (
+                        "TRUE" if status_raw is True else
+                        "FALSE" if status_raw is False else
+                        "NOT FOUND"
+                    )
+
+                    # ==========================
+                    # WAKTU INTERVENSI (TEXT SAFE)
+                    # ==========================
+                    waktu_intervensi = res.get("WAKTU INTERVENSI", "-")
+
+                    if pd.notnull(waktu_intervensi):
+                        try:
+                            waktu_intervensi = pd.to_datetime(waktu_intervensi).strftime("%H:%M:%S")
+                        except:
+                            waktu_intervensi = str(waktu_intervensi)
+                    else:
+                        waktu_intervensi = "-"
 
                     rows.append([
                         raw,
@@ -141,8 +162,8 @@ def index():
                         pelanggaran,
                         res["WAKTU KEJADIAN"].strftime('%Y-%m-%d %H:%M:%S'),
                         res["WAKTU KE SERVER GABUNGAN"].strftime('%H:%M:%S') if pd.notnull(res["WAKTU KE SERVER GABUNGAN"]) else "-",
-                        "-",
-                        status_context if status_context != "NAN" else "NOT FOUND"
+                        waktu_intervensi,
+                        status_context
                     ])
 
             except Exception as e:
