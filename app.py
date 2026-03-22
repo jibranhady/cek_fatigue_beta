@@ -7,35 +7,48 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# ==================================================
+# ==========================
 # CONFIG DB
-# ==================================================
+# ==========================
 DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
-engine = create_engine(
-    DB_URL,
-    pool_pre_ping=True,
-    pool_recycle=300
-)
+engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=300)
 
-# ==================================================
-# LOAD RAWDATA MAPPING
-# ==================================================
+# ==========================
+# LOAD RAWDATA
+# ==========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-try:
-    df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
-    df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
-    df_raw["unitno"] = df_raw["unitno"].astype(str).str.strip().str.upper()
-except Exception as e:
-    print(f"Error Rawdata.xlsx: {e}")
-    df_raw = pd.DataFrame()
+df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
+df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
+df_raw["unitno"] = df_raw["unitno"].astype(str).str.strip().str.upper()
 
 last_rows = []
 
-# ==================================================
-# ROUTE UTAMA
-# ==================================================
+# ==========================
+# HITUNG LTIME
+# ==========================
+def hitung_ltime(alert, bedms):
+    try:
+        t1 = pd.to_datetime(alert)
+        t2 = pd.to_datetime(bedms)
+
+        diff = t2 - t1
+        total_sec = int(diff.total_seconds())
+
+        if total_sec < 0:
+            return "-"
+
+        m = total_sec // 60
+        s = total_sec % 60
+
+        return f"{m}m {s}s"
+    except:
+        return "-"
+
+# ==========================
+# ROUTE
+# ==========================
 @app.route("/", methods=["GET", "POST"])
 def index():
     global last_rows
@@ -45,76 +58,48 @@ def index():
         raw_text = request.form.get("raw", "")
         site = request.form.get("site", "brcb")
 
-        if not raw_text.strip():
-            return render_template("index.html", hasil=None)
-
         table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
-        # ==================================================
-        # AMBIL DATA DB (24 JAM TERAKHIR)
-        # ==================================================
-        try:
-            with engine.connect() as conn:
-                query = text(f"""
-                    SELECT * FROM {table_name}
-                    WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '24 HOURS'
-                """)
-                df_event = pd.read_sql(query, conn)
-        except Exception as e:
-            return render_template("index.html", error=f"❌ DB Error: {e}")
+        # ambil data 24 jam
+        with engine.connect() as conn:
+            df_event = pd.read_sql(text(f"""
+                SELECT * FROM {table_name}
+                WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '24 HOURS'
+            """), conn)
 
-        if df_event.empty:
-            return render_template("index.html", error="❌ Database kosong (24 jam terakhir).")
-
-        # ==================================================
-        # PREPROCESS DATA DB
-        # ==================================================
-        df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"]).dt.tz_localize(None)
+        df_event["WAKTU KEJADIAN"] = pd.to_datetime(df_event["WAKTU KEJADIAN"])
         df_event["ANGKA_UNIT"] = df_event["KODE KENDARAAN"].astype(str).str.extract(r"(\d+)")
 
         rows = []
 
-        # ==================================================
-        # LOOP RAW INPUT
-        # ==================================================
         for raw in raw_text.splitlines():
             raw = raw.strip().upper()
             if not raw:
                 continue
 
             try:
-                # FORMAT: SLS30I049-CLOSEDEYES_20260317_151611
                 parts = raw.split("_")
 
                 if len(parts) < 3:
-                    rows.append([raw, "❌ Format Salah", "-", "-", "-", "-", "ERROR"])
+                    rows.append([raw, "FORMAT SALAH", "-", "-", "-", "-", "ERROR"])
                     continue
 
                 bagian1, tanggal_raw, jam_raw = parts[0], parts[1], parts[2]
                 unit_raw, pelanggaran = bagian1.split("-")
 
-                # ==================================================
-                # TANPA OFFSET (DB SUDAH BENAR)
-                # ==================================================
                 waktu_lookup = datetime.strptime(tanggal_raw + jam_raw, "%Y%m%d%H%M%S")
 
-                # ==================================================
-                # CEK MAPPING DEVICE → UNIT
-                # ==================================================
                 cek_unit = df_raw[df_raw["deviceid"] == unit_raw]
 
                 if cek_unit.empty:
-                    rows.append([raw, "❌ Device ID Unmapped", pelanggaran, "-", "-", "-", "ERROR"])
+                    rows.append([raw, "UNMAPPED", pelanggaran, "-", "-", "-", "ERROR"])
                     continue
 
-                nama_unit_full = cek_unit.iloc[0]["unitno"]
-                angka_unit_lookup = ''.join(filter(str.isdigit, str(nama_unit_full)))
+                nama_unit = cek_unit.iloc[0]["unitno"]
+                angka_unit = ''.join(filter(str.isdigit, str(nama_unit)))
 
-                # ==================================================
-                # MATCHING (PAKAI RANGE ±2 MENIT)
-                # ==================================================
                 match = df_event[
-                    (df_event["ANGKA_UNIT"] == angka_unit_lookup) &
+                    (df_event["ANGKA_UNIT"] == angka_unit) &
                     (df_event["WAKTU KEJADIAN"] >= waktu_lookup - timedelta(minutes=2)) &
                     (df_event["WAKTU KEJADIAN"] <= waktu_lookup + timedelta(minutes=2))
                 ]
@@ -122,9 +107,9 @@ def index():
                 if match.empty:
                     rows.append([
                         raw,
-                        nama_unit_full,
+                        nama_unit,
                         pelanggaran,
-                        "❌ Tidak ditemukan",
+                        "TIDAK DITEMUKAN",
                         "-",
                         "-",
                         "FALSE"
@@ -132,67 +117,42 @@ def index():
                 else:
                     res = match.iloc[0]
 
-                    # ==========================
-                    # STATUS (BOOLEAN SAFE)
-                    # ==========================
+                    time_alert = res["WAKTU KEJADIAN"]
+                    time_bedms = res["WAKTU KE SERVER GABUNGAN"]
+
+                    ltime = hitung_ltime(time_alert, time_bedms)
+
                     status_val = res.get("INTERVENSI - STATUS CONTEXT")
-                    # Konversi ke string, hapus spasi, dan buat huruf besar semua
-                    status_str = str(status_val).strip().upper() if pd.notnull(status_val) else "EMPTY"
-
-                    if status_str in ["TRUE", "T", "YES", "1"]:
-                        status_context = "TRUE"
-                    elif status_str in ["FALSE", "F", "NO", "0"]:
-                        status_context = "FALSE"
-                    elif status_str == "EMPTY" or status_str == "NONE" or status_str == "NAN":
-                        status_context = "NOT FOUND"
-                    else:
-                        # Jika isinya teks lain, tampilkan apa adanya
-                        status_context = status_str
-
-                    # ==========================
-                    # WAKTU INTERVENSI (TEXT SAFE)
-                    # ==========================
-                    waktu_intervensi = res.get("WAKTU INTERVENSI", "-")
-
-                    if pd.notnull(waktu_intervensi):
-                        try:
-                            waktu_intervensi = pd.to_datetime(waktu_intervensi).strftime("%H:%M:%S")
-                        except:
-                            waktu_intervensi = str(waktu_intervensi)
-                    else:
-                        waktu_intervensi = "-"
+                    status = str(status_val).strip().upper() if pd.notnull(status_val) else "NOT FOUND"
 
                     rows.append([
                         raw,
-                        nama_unit_full,
+                        nama_unit,
                         pelanggaran,
-                        res["WAKTU KEJADIAN"].strftime('%Y-%m-%d %H:%M:%S'),
-                        res["WAKTU KE SERVER GABUNGAN"].strftime('%H:%M:%S') if pd.notnull(res["WAKTU KE SERVER GABUNGAN"]) else "-",
-                        waktu_intervensi,
-                        status_context
+                        time_alert.strftime('%Y-%m-%d %H:%M:%S'),
+                        time_bedms.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(time_bedms) else "-",
+                        ltime,
+                        status
                     ])
 
             except Exception as e:
-                rows.append([raw, "❌ Format salah", str(e), "-", "-", "-", "ERROR"])
+                rows.append([raw, "ERROR", str(e), "-", "-", "-", "ERROR"])
 
         hasil = rows
         last_rows = rows
 
     return render_template("index.html", hasil=hasil)
 
-# ==================================================
-# EXPORT EXCEL
-# ==================================================
+# ==========================
+# EXPORT
+# ==========================
 @app.route("/export")
 def export_excel():
     global last_rows
 
-    if not last_rows:
-        return "Tidak ada data"
-
     df_export = pd.DataFrame(last_rows, columns=[
-        "RAW", "Nama Unit", "Pelanggaran", "Waktu Kejadian",
-        "Masuk Gabungan", "Waktu Intervensi", "Status Context"
+        "PID", "Unit", "Alert", "Time Alert",
+        "Time BeDMS", "LTime", "Status"
     ])
 
     output = BytesIO()
@@ -202,14 +162,10 @@ def export_excel():
 
     output.seek(0)
 
-    return send_file(
-        output,
-        download_name=f"Hasil_{datetime.now().strftime('%Y%m%d')}.xlsx",
-        as_attachment=True
-    )
+    return send_file(output, download_name="hasil.xlsx", as_attachment=True)
 
-# ==================================================
-# RUN APP
-# ==================================================
+# ==========================
+# RUN
+# ==========================
 if __name__ == "__main__":
     app.run(debug=True)
