@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Cek PID Alert Fatigue MH02</title>
-    
+
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
@@ -139,7 +139,9 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
 
 const URL_API = "https://script.google.com/macros/s/AKfycbwcyrJRlEV5PjPproGf8_fQbSZ-kmoUmbqS9KWAImuQMK0-aSLNsWZgEGBKYGRxVZ3iMg/exec";
 
-// kirim per row
+// ==========================
+// KIRIM PER ROW (FIX CORS)
+// ==========================
 function kirimRow(btn) {
 
     const row = btn.parentElement.parentElement;
@@ -161,7 +163,10 @@ function kirimRow(btn) {
 
     fetch(URL_API, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        mode: "no-cors", // 🔥 FIX CORS
+        headers: {
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify(data)
     })
     .then(() => {
@@ -175,7 +180,9 @@ function kirimRow(btn) {
     });
 }
 
-// kirim semua
+// ==========================
+// KIRIM SEMUA
+// ==========================
 function kirimSemua() {
     document.querySelectorAll("tbody button").forEach(btn => {
         if (!btn.classList.contains("btn-success")) {
