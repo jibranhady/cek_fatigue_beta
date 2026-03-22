@@ -6,43 +6,84 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
+<!-- FUTURISTIC FONT -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
 <style>
+/* BACKGROUND */
 body {
-    background: radial-gradient(circle at top, #0f172a, #020617);
+    background: radial-gradient(circle at top, #020617, #000000);
     color: #e2e8f0;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+/* ANIMATED GRID BACKGROUND */
+body::before {
+    content: "";
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(rgba(59,130,246,0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(59,130,246,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: -1;
 }
 
 /* NAVBAR */
 .navbar {
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(10px);
+    background: rgba(2, 6, 23, 0.7);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-/* GLASS CARD */
+/* TITLE */
+.title-glow {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* CARD GLASS */
 .card {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(15px);
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 0 30px rgba(59,130,246,0.1);
+}
+
+/* LABEL */
+label {
+    color: #93c5fd;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+label::before {
+    content: "▸ ";
+    color: #38bdf8;
 }
 
 /* INPUT */
 textarea, .form-select {
     background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #e2e8f0;
 }
 
 textarea::placeholder {
-    color: #94a3b8;
+    color: #64748b;
 }
 
 /* BUTTON */
 .btn-primary {
-    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
     border: none;
+    box-shadow: 0 0 15px #38bdf8;
 }
 
 .btn-primary:hover {
@@ -63,7 +104,7 @@ textarea::placeholder {
 }
 
 .table tbody tr:hover {
-    background: rgba(59,130,246,0.1);
+    background: rgba(56,189,248,0.08);
 }
 
 /* BADGE */
@@ -77,7 +118,7 @@ textarea::placeholder {
     box-shadow: 0 0 10px #ef4444;
 }
 
-/* LTIME COLOR GLOW */
+/* LTIME */
 .ltime-good {
     color: #22c55e;
     text-shadow: 0 0 8px #22c55e;
@@ -93,18 +134,9 @@ textarea::placeholder {
     text-shadow: 0 0 8px #ef4444;
 }
 
-/* TITLE */
-.title-glow {
-    font-weight: bold;
-    font-size: 22px;
-    background: linear-gradient(90deg, #3b82f6, #6366f1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
 /* SUBTITLE */
 .subtitle {
-    color: #94a3b8;
+    color: #64748b;
     font-size: 13px;
 }
 
@@ -113,10 +145,27 @@ textarea::placeholder {
     max-height: 600px;
     overflow-y: auto;
 }
+
+/* SCAN LINE EFFECT */
+.scanline {
+    position: fixed;
+    width: 100%;
+    height: 2px;
+    background: rgba(56,189,248,0.2);
+    animation: scan 4s linear infinite;
+    z-index: 999;
+}
+
+@keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+}
 </style>
 </head>
 
 <body>
+
+<div class="scanline"></div>
 
 <nav class="navbar navbar-dark shadow-sm">
     <div class="container">
@@ -130,38 +179,40 @@ textarea::placeholder {
 
     <div class="mb-3">
         <div class="title-glow">Cek PID Alert</div>
-        <div class="subtitle">Analisa cepat dan validasi data fatigue system</div>
+        <div class="subtitle">Realtime fatigue validation system</div>
     </div>
 
-    <div class="card p-4 shadow-sm">
+    <div class="card p-4">
         <form method="post">
 
             <div class="mb-3">
-                <label class="mb-1">Pilih Site</label>
+                <label>Select Site</label>
                 <select name="site" class="form-select">
                     <option value="brcb">BRCB</option>
                     <option value="brcg">BRCG</option>
                 </select>
             </div>
 
-            <label class="mb-2">Paste PID Alert</label>
-            <textarea name="raw" id="rawInput" class="form-control" rows="6"
-                placeholder="Contoh: SLS30I614-YAWNING_20260309_235021"></textarea>
+            <div class="mb-2">
+                <label>Input PID Alert</label>
+                <textarea name="raw" id="rawInput" class="form-control" rows="6"
+                    placeholder="SLS30I614-YAWNING_20260309_235021"></textarea>
+            </div>
 
             <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-primary px-4">Cek Sekarang</button>
+                <button class="btn btn-primary px-4">EXECUTE</button>
                 <button type="button" class="btn btn-outline-light"
-                    onclick="document.getElementById('rawInput').value=''">Clear</button>
+                    onclick="document.getElementById('rawInput').value=''">CLEAR</button>
             </div>
 
         </form>
     </div>
 
     {% if hasil %}
-    <div class="card mt-4 p-4 shadow-sm">
+    <div class="card mt-4 p-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="title-glow mb-0">Hasil Inspeksi</h5>
-            <a href="/export" class="btn btn-success btn-sm">Export</a>
+            <h5 class="title-glow mb-0">SYSTEM RESULT</h5>
+            <a href="/export" class="btn btn-success btn-sm">EXPORT</a>
         </div>
 
         <div class="table-responsive">
@@ -169,12 +220,12 @@ textarea::placeholder {
                 <thead>
                     <tr>
                         <th>PID</th>
-                        <th>Unit</th>
-                        <th>Alert</th>
-                        <th>Time Alert</th>
-                        <th>Time BeDMS</th>
-                        <th>LTime</th>
-                        <th>Status</th>
+                        <th>UNIT</th>
+                        <th>ALERT</th>
+                        <th>TIME ALERT</th>
+                        <th>BEDMS</th>
+                        <th>LTIME</th>
+                        <th>STATUS</th>
                     </tr>
                 </thead>
 
