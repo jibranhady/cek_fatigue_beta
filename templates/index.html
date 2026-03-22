@@ -6,97 +6,86 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- FUTURISTIC FONT -->
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
-/* BACKGROUND */
-body {
-    background: radial-gradient(circle at top, #020617, #000000);
-    color: #e2e8f0;
-    font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
-}
 
-/* ANIMATED GRID BACKGROUND */
-body::before {
-    content: "";
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background-image: linear-gradient(rgba(59,130,246,0.05) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(59,130,246,0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-    z-index: -1;
+/* BODY */
+body {
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: 'Inter', sans-serif;
 }
 
 /* NAVBAR */
 .navbar {
-    background: rgba(2, 6, 23, 0.7);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: #ffffff;
+    border-bottom: 3px solid #F5C400;
 }
 
 /* TITLE */
 .title-glow {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 600;
-    font-size: 22px;
-    background: linear-gradient(90deg, #38bdf8, #6366f1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+    font-size: 20px;
+    color: #2F4B8F;
 }
 
-/* CARD GLASS */
+/* SUBTITLE */
+.subtitle {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* CARD */
 .card {
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(20px);
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 0 30px rgba(59,130,246,0.1);
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
 }
 
 /* LABEL */
 label {
-    color: #93c5fd;
+    color: #2F4B8F;
+    font-weight: 500;
     font-size: 13px;
-    letter-spacing: 0.5px;
-}
-
-label::before {
-    content: "▸ ";
-    color: #38bdf8;
 }
 
 /* INPUT */
 textarea, .form-select {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #e2e8f0;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
 }
 
 textarea::placeholder {
-    color: #64748b;
+    color: #94a3b8;
 }
 
 /* BUTTON */
 .btn-primary {
-    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    background: #2F4B8F;
     border: none;
-    box-shadow: 0 0 15px #38bdf8;
+    border-radius: 10px;
 }
 
 .btn-primary:hover {
-    opacity: 0.9;
+    background: #1E3A8A;
+}
+
+.btn-outline-light {
+    border: 1px solid #2F4B8F;
+    color: #2F4B8F;
 }
 
 /* TABLE */
 .table {
-    color: #e2e8f0;
+    color: #0f172a;
 }
 
 .table thead {
-    background: rgba(255,255,255,0.05);
+    background: #F5C400;
+    color: #0f172a;
 }
 
 .table tbody tr {
@@ -104,40 +93,31 @@ textarea::placeholder {
 }
 
 .table tbody tr:hover {
-    background: rgba(56,189,248,0.08);
+    background: #f1f5f9;
 }
 
 /* BADGE */
 .badge-true {
-    background: #22c55e;
-    box-shadow: 0 0 10px #22c55e;
+    background: #16a34a;
+    color: white;
 }
 
 .badge-false {
-    background: #ef4444;
-    box-shadow: 0 0 10px #ef4444;
+    background: #dc2626;
+    color: white;
 }
 
 /* LTIME */
 .ltime-good {
-    color: #22c55e;
-    text-shadow: 0 0 8px #22c55e;
+    color: #16a34a;
 }
 
 .ltime-mid {
-    color: #facc15;
-    text-shadow: 0 0 8px #facc15;
+    color: #eab308;
 }
 
 .ltime-bad {
-    color: #ef4444;
-    text-shadow: 0 0 8px #ef4444;
-}
-
-/* SUBTITLE */
-.subtitle {
-    color: #64748b;
-    font-size: 13px;
+    color: #dc2626;
 }
 
 /* SCROLL */
@@ -146,32 +126,26 @@ textarea::placeholder {
     overflow-y: auto;
 }
 
-/* SCAN LINE EFFECT */
-.scanline {
-    position: fixed;
-    width: 100%;
-    height: 2px;
-    background: rgba(56,189,248,0.2);
-    animation: scan 4s linear infinite;
-    z-index: 999;
-}
-
-@keyframes scan {
-    0% { top: 0; }
-    100% { top: 100%; }
-}
 </style>
 </head>
 
 <body>
 
-<div class="scanline"></div>
+<!-- NAVBAR -->
+<nav class="navbar shadow-sm">
+    <div class="container d-flex align-items-center gap-3">
 
-<nav class="navbar navbar-dark shadow-sm">
-    <div class="container">
-        <span class="title-glow">
-            Cek PID Alert Fatigue MH02
-        </span>
+        <!-- LOGO -->
+        <img src="{{ url_for('static', filename='logo.png') }}"
+             height="42"
+             style="background:white; padding:4px; border-radius:8px;">
+
+        <!-- TITLE -->
+        <div>
+            <div class="title-glow">Fatigue Monitoring System</div>
+            <div class="subtitle">Cek PID Alert MH02</div>
+        </div>
+
     </div>
 </nav>
 
@@ -182,6 +156,7 @@ textarea::placeholder {
         <div class="subtitle">Realtime fatigue validation system</div>
     </div>
 
+    <!-- FORM -->
     <div class="card p-4">
         <form method="post">
 
@@ -209,7 +184,9 @@ textarea::placeholder {
     </div>
 
     {% if hasil %}
+    <!-- RESULT -->
     <div class="card mt-4 p-4">
+
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="title-glow mb-0">SYSTEM RESULT</h5>
             <a href="/export" class="btn btn-success btn-sm">EXPORT</a>
@@ -260,6 +237,7 @@ textarea::placeholder {
 
             </table>
         </div>
+
     </div>
     {% endif %}
 
