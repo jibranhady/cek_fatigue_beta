@@ -171,23 +171,39 @@ def halaman_true():
     with engine.connect() as conn:
         df = pd.read_sql(text(query), conn)
 
-    print("DEBUG TRUE:", df.shape)
-
     df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
+
+    # 🔥 ALERT MAPPING
+    def map_alert(alert):
+        mapping = {
+            "MENUTUP MATA": "CLOSED_EYES",
+            "MENGANTUK": "DROWSY",
+            "MENGUAP": "YAWNING",
+            "HEAD NOD": "HEAD_NOD"
+        }
+        return mapping.get(str(alert).strip().upper(), str(alert).upper().replace(" ", "_"))
 
     rows = []
 
     for _, r in df.iterrows():
         try:
-            unit = r.get("KODE KENDARAAN", "-")
-            alert = r.get("PERINGATAN", "-")
+            unit = str(r.get("KODE KENDARAAN", "")).upper()
+            alert = r.get("PERINGATAN")
             waktu = r.get("WAKTU KEJADIAN")
 
             if pd.isna(waktu):
                 continue
 
+            # 🔥 AMBIL DEVICE ID DARI RAWDATA
+            device_match = df_raw[df_raw["unitno"] == unit]
+
+            if device_match.empty:
+                device_id = "UNKNOWN"
+            else:
+                device_id = device_match.iloc[0]["deviceid"]
+
             # FILTER UNIT
-            if unit_filter and unit_filter not in str(unit):
+            if unit_filter and unit_filter not in unit:
                 continue
 
             # FILTER JAM
@@ -195,19 +211,20 @@ def halaman_true():
                 if waktu.hour != int(jam_filter):
                     continue
 
-            # PID
-            pid = f"{unit}-{alert}_{waktu.strftime('%Y%m%d_%H%M%S')}"
+            alert_en = map_alert(alert)
 
-            # 🔥 AMBIL VIDEO ASLI
+            # 🔥 PID FINAL
+            pid = f"{device_id}-{alert_en}_{waktu.strftime('%Y%m%d_%H%M%S')}"
+
+            # VIDEO
             video_url = r.get("URL VIDEO")
-
             if not video_url or str(video_url).strip() == "":
                 video_url = "#"
 
             rows.append([
                 pid,
                 unit,
-                alert,
+                alert_en,
                 waktu.strftime('%Y-%m-%d %H:%M:%S'),
                 video_url
             ])
@@ -215,8 +232,6 @@ def halaman_true():
         except Exception as e:
             print("ERROR:", e)
             continue
-
-    print("FINAL ROW:", len(rows))
 
     return render_template("true.html", data=rows)
 
