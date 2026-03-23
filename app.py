@@ -22,7 +22,22 @@ df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 df_raw["unitno"] = df_raw["unitno"].astype(str).str.strip().str.upper()
 
+# 🔥 NORMALISASI UNIT SEKALI SAJA (PENTING)
+df_raw["unit_clean"] = df_raw["unitno"].apply(lambda x: ''.join(filter(str.isdigit, str(x))))
+
 last_rows = []
+
+# ==========================
+# ALERT MAPPING
+# ==========================
+def map_alert(alert):
+    mapping = {
+        "MENUTUP MATA": "CLOSED_EYES",
+        "MENGANTUK": "DROWSY",
+        "MENGUAP": "YAWNING",
+        "HEAD NOD": "HEAD_NOD"
+    }
+    return mapping.get(str(alert).strip().upper(), str(alert).upper().replace(" ", "_"))
 
 # ==========================
 # HITUNG LTIME
@@ -46,7 +61,7 @@ def hitung_ltime(alert, bedms):
         return "-"
 
 # ==========================
-# ROUTE UTAMA (CEK PID)
+# ROUTE UTAMA
 # ==========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -138,7 +153,6 @@ def index():
             except Exception as e:
                 rows.append([raw, "ERROR", str(e), "-", "-", "-", "ERROR"])
 
-        # FILTER STATUS
         if status_filter == "TRUE":
             rows = [r for r in rows if r[6] == "TRUE"]
         elif status_filter == "FALSE":
@@ -150,7 +164,7 @@ def index():
     return render_template("index.html", hasil=hasil)
 
 # ==========================
-# ROUTE DASHBOARD TRUE
+# ROUTE TRUE DASHBOARD (FIXED)
 # ==========================
 @app.route("/true")
 def halaman_true():
@@ -173,16 +187,6 @@ def halaman_true():
 
     df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
 
-    # 🔥 ALERT MAPPING
-    def map_alert(alert):
-        mapping = {
-            "MENUTUP MATA": "CLOSED_EYES",
-            "MENGANTUK": "DROWSY",
-            "MENGUAP": "YAWNING",
-            "HEAD NOD": "HEAD_NOD"
-        }
-        return mapping.get(str(alert).strip().upper(), str(alert).upper().replace(" ", "_"))
-
     rows = []
 
     for _, r in df.iterrows():
@@ -194,29 +198,28 @@ def halaman_true():
             if pd.isna(waktu):
                 continue
 
-            # 🔥 AMBIL DEVICE ID DARI RAWDATA
-            device_match = df_raw[df_raw["unitno"] == unit]
+            # 🔥 NORMALISASI UNIT
+            unit_number = ''.join(filter(str.isdigit, unit))
+
+            device_match = df_raw[df_raw["unit_clean"] == unit_number]
 
             if device_match.empty:
+                print("❌ TIDAK MATCH:", unit)
                 device_id = "UNKNOWN"
             else:
                 device_id = device_match.iloc[0]["deviceid"]
 
-            # FILTER UNIT
             if unit_filter and unit_filter not in unit:
                 continue
 
-            # FILTER JAM
             if jam_filter:
                 if waktu.hour != int(jam_filter):
                     continue
 
             alert_en = map_alert(alert)
 
-            # 🔥 PID FINAL
             pid = f"{device_id}-{alert_en}_{waktu.strftime('%Y%m%d_%H%M%S')}"
 
-            # VIDEO
             video_url = r.get("URL VIDEO")
             if not video_url or str(video_url).strip() == "":
                 video_url = "#"
