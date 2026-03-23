@@ -11,7 +11,6 @@ app = Flask(__name__)
 # CONFIG DB
 # ==========================
 DB_URL = "postgresql+psycopg2://postgres.xjnyjskeauyfpqioanse:matisaja123@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
-
 engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=300)
 
 # ==========================
@@ -47,7 +46,7 @@ def hitung_ltime(alert, bedms):
         return "-"
 
 # ==========================
-# ROUTE
+# ROUTE UTAMA (CEK PID)
 # ==========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -57,13 +56,15 @@ def index():
     if request.method == "POST":
         raw_text = request.form.get("raw", "")
         site = request.form.get("site", "brcb")
+        status_filter = request.form.get("status_filter", "ALL")
 
         table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
         # ambil data 24 jam
         with engine.connect() as conn:
             df_event = pd.read_sql(text(f"""
-                SELECT * FROM {table_name}
+                SELECT *
+                FROM {table_name}
                 WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '24 HOURS'
             """), conn)
 
@@ -138,10 +139,77 @@ def index():
             except Exception as e:
                 rows.append([raw, "ERROR", str(e), "-", "-", "-", "ERROR"])
 
+        # 🔥 FILTER STATUS
+        if status_filter == "TRUE":
+            rows = [r for r in rows if r[6] == "TRUE"]
+        elif status_filter == "FALSE":
+            rows = [r for r in rows if r[6] == "FALSE"]
+
         hasil = rows
         last_rows = rows
 
     return render_template("index.html", hasil=hasil)
+
+# ==========================
+# ROUTE DASHBOARD TRUE
+# ==========================
+@app.route("/true")
+def halaman_true():
+
+    site = request.args.get("site", "brcg")
+    unit_filter = request.args.get("unit", "")
+    jam_filter = request.args.get("jam", "")
+
+    table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
+
+    query = f"""
+        SELECT *
+        FROM {table_name}
+        WHERE "INTERVENSI - STATUS CONTEXT" = 'TRUE'
+        AND "WAKTU KEJADIAN" > NOW() - INTERVAL '24 HOURS'
+        ORDER BY "WAKTU KEJADIAN" DESC
+    """
+
+    with engine.connect() as conn:
+        df = pd.read_sql(text(query), conn)
+
+    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"])
+
+    rows = []
+
+    for _, r in df.iterrows():
+        try:
+            unit = r["KODE KENDARAAN"]
+            alert = r["PERINGATAN"]
+            waktu = r["WAKTU KEJADIAN"]
+
+            # FILTER UNIT
+            if unit_filter and unit_filter not in str(unit):
+                continue
+
+            # FILTER JAM
+            if jam_filter:
+                if waktu.hour != int(jam_filter):
+                    continue
+
+            # 🔥 GENERATE PID
+            pid = f"{unit}-{alert}_{waktu.strftime('%Y%m%d_%H%M%S')}"
+
+            # 🔥 VIDEO URL (dummy, bisa diganti nanti)
+            video_url = f"https://your-video-server/{pid}.mp4"
+
+            rows.append([
+                pid,
+                unit,
+                alert,
+                waktu.strftime('%Y-%m-%d %H:%M:%S'),
+                video_url
+            ])
+
+        except:
+            continue
+
+    return render_template("true.html", data=rows)
 
 # ==========================
 # EXPORT
