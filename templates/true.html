@@ -8,105 +8,65 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
+body { background:#f8fafc; font-family:'Inter'; margin:0; }
 
-body {
-    background: #f8fafc;
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-}
-
-/* SIDEBAR */
 .sidebar {
-    width: 220px;
-    height: 100vh;
-    background: #ffffff;
-    border-right: 1px solid #e2e8f0;
-    position: fixed;
-    padding: 20px;
+    width:220px;
+    height:100vh;
+    background:#fff;
+    border-right:1px solid #e2e8f0;
+    position:fixed;
+    padding:20px;
 }
 
-.sidebar h4 {
-    font-weight: 700;
-    color: #2F4B8F;
-}
+.sidebar h4 { color:#2F4B8F; font-weight:700; }
 
 .sidebar a {
-    display: block;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #334155;
-}
-
-.sidebar a:hover {
-    background: #f1f5f9;
+    display:block;
+    padding:10px;
+    margin-top:10px;
+    border-radius:8px;
+    text-decoration:none;
+    color:#334155;
 }
 
 .sidebar .active {
-    background: #2F4B8F;
-    color: white;
+    background:#2F4B8F;
+    color:white;
 }
 
-/* MAIN */
 .main {
-    margin-left: 240px;
-    padding: 20px;
+    margin-left:240px;
+    padding:20px;
 }
 
-/* NAVBAR */
 .navbar {
-    background: #ffffff;
-    border-bottom: 3px solid #F5C400;
+    background:white;
+    border-bottom:3px solid #F5C400;
 }
 
-/* TITLE */
 .title-glow {
-    font-weight: 700;
-    font-size: 20px;
-    color: #2F4B8F;
+    font-weight:700;
+    color:#2F4B8F;
 }
 
 .subtitle {
-    color: #64748b;
-    font-size: 12px;
+    font-size:12px;
+    color:#64748b;
 }
 
-/* CARD */
 .card {
-    background: #ffffff;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    border-radius:14px;
+    border:1px solid #e2e8f0;
 }
 
-/* TABLE */
 .table thead {
-    background: #F5C400;
+    background:#F5C400;
 }
-
-.table tbody tr:hover {
-    background: #f1f5f9;
-}
-
-/* BUTTON */
-.btn-primary {
-    background: #2F4B8F;
-    border: none;
-    border-radius: 10px;
-}
-
-.btn-primary:hover {
-    background: #1E3A8A;
-}
-
 </style>
 
 <script>
-// AUTO REFRESH
-setInterval(() => {
-    location.reload();
-}, 10000);
+setInterval(() => location.reload(), 10000);
 </script>
 
 </head>
@@ -116,24 +76,21 @@ setInterval(() => {
 <!-- SIDEBAR -->
 <div class="sidebar">
     <h4>Fatigue</h4>
-    <a href="/">Home</a>
-    <a href="/true" class="active">Dashboard TRUE</a>
+    <a href="/">🏠 Home</a>
+    <a href="/true" class="active">🔥 Dashboard TRUE</a>
 </div>
 
 <!-- MAIN -->
 <div class="main">
 
-<!-- NAVBAR -->
+<!-- NAVBAR (FIX CLEAN) -->
 <nav class="navbar shadow-sm mb-3 p-2">
-    <div class="d-flex align-items-center gap-3">
-
+    <div class="container d-flex align-items-center gap-3">
         <img src="{{ url_for('static', filename='logo.png') }}" height="45">
-
         <div>
             <div class="title-glow">Fatigue Monitoring System</div>
-            <div class="subtitle">Dashboard Intervensi TRUE</div>
+            <div class="subtitle">Realtime Monitoring Dashboard</div>
         </div>
-
     </div>
 </nav>
 
@@ -144,70 +101,56 @@ setInterval(() => {
 
 <!-- FILTER -->
 <div class="card p-3 mb-3">
-
 <div class="d-flex flex-wrap gap-2">
 
-    <select id="site" class="form-select w-auto">
-        <option value="brcg">BRCG</option>
-        <option value="brcb">BRCB</option>
-    </select>
+<select id="site" class="form-select w-auto">
+    <option value="brcg">BRCG</option>
+    <option value="brcb">BRCB</option>
+</select>
 
-    <input type="text" id="unit" class="form-control w-auto" placeholder="Filter Unit">
+<input type="text" id="unit" class="form-control w-auto" placeholder="Filter Unit">
 
-    <select id="jam" class="form-select w-auto">
-        <option value="">Semua Jam</option>
-        <option value="7">07</option>
-        <option value="8">15</option>
-        <option value="9">20</option>
-        <option value="10">23</option>
-    </select>
+<select id="jam" class="form-select w-auto">
+    <option value="">Semua Jam</option>
+    <option value="7">07</option>
+    <option value="8">12</option>
+    <option value="9">15</option>
+    <option value="10">20</option>
+    <option value="11">23</option>
+</select>
 
-    <button class="btn btn-primary" onclick="applyFilter()">Filter</button>
+<button class="btn btn-primary" onclick="applyFilter()">Filter</button>
 
 </div>
-
 </div>
 
 <!-- TABLE -->
 <div class="card p-3">
 
-<div class="table-responsive">
-<table class="table text-center align-middle">
-    <thead>
-        <tr>
-            <th>PID</th>
-            <th>UNIT</th>
-            <th>ALERT</th>
-            <th>TIME</th>
-            <th>VIDEO</th>
-        </tr>
-    </thead>
+<table class="table text-center">
+<thead>
+<tr>
+<th>PID</th>
+<th>UNIT</th>
+<th>ALERT</th>
+<th>TIME</th>
+<th>VIDEO</th>
+</tr>
+</thead>
 
-    <tbody>
-    {% for r in data %}
-    <tr>
+<tbody>
+{% for r in data %}
+<tr>
+<td><a href="{{ r[4] }}" target="_blank">{{ r[0] }}</a></td>
+<td>{{ r[1] }}</td>
+<td>{{ r[2] }}</td>
+<td>{{ r[3] }}</td>
+<td><a href="{{ r[4] }}" target="_blank" class="btn btn-success btn-sm">▶</a></td>
+</tr>
+{% endfor %}
+</tbody>
 
-        <td>
-            <a href="{{ r[4] }}" target="_blank" class="fw-bold text-decoration-none">
-                {{ r[0] }}
-            </a>
-        </td>
-
-        <td>{{ r[1] }}</td>
-        <td>{{ r[2] }}</td>
-        <td>{{ r[3] }}</td>
-
-        <td>
-            <a href="{{ r[4] }}" target="_blank" class="btn btn-sm btn-success">
-                ▶ View
-            </a>
-        </td>
-
-    </tr>
-    {% endfor %}
-    </tbody>
 </table>
-</div>
 
 </div>
 
@@ -215,16 +158,12 @@ setInterval(() => {
 </div>
 
 <script>
-
-function applyFilter() {
-    const site = document.getElementById("site").value;
-    const unit = document.getElementById("unit").value;
-    const jam = document.getElementById("jam").value;
-
-    let url = `/true?site=${site}&unit=${unit}&jam=${jam}`;
-    window.location.href = url;
+function applyFilter(){
+    const site=document.getElementById("site").value;
+    const unit=document.getElementById("unit").value;
+    const jam=document.getElementById("jam").value;
+    window.location=`/true?site=${site}&unit=${unit}&jam=${jam}`;
 }
-
 </script>
 
 </body>
