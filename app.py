@@ -60,7 +60,6 @@ def index():
 
         table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
-        # ambil data 24 jam
         with engine.connect() as conn:
             df_event = pd.read_sql(text(f"""
                 SELECT *
@@ -139,7 +138,7 @@ def index():
             except Exception as e:
                 rows.append([raw, "ERROR", str(e), "-", "-", "-", "ERROR"])
 
-        # 🔥 FILTER STATUS
+        # FILTER STATUS
         if status_filter == "TRUE":
             rows = [r for r in rows if r[6] == "TRUE"]
         elif status_filter == "FALSE":
@@ -165,23 +164,27 @@ def halaman_true():
     query = f"""
         SELECT *
         FROM {table_name}
-        WHERE "INTERVENSI - STATUS CONTEXT" = 'TRUE'
-        AND "WAKTU KEJADIAN" > NOW() - INTERVAL '24 HOURS'
+        WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
         ORDER BY "WAKTU KEJADIAN" DESC
     """
 
     with engine.connect() as conn:
         df = pd.read_sql(text(query), conn)
 
-    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"])
+    print("DEBUG TRUE:", df.shape)
+
+    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
 
     rows = []
 
     for _, r in df.iterrows():
         try:
-            unit = r["KODE KENDARAAN"]
-            alert = r["PERINGATAN"]
-            waktu = r["WAKTU KEJADIAN"]
+            unit = r.get("KODE KENDARAAN", "-")
+            alert = r.get("PERINGATAN", "-")
+            waktu = r.get("WAKTU KEJADIAN")
+
+            if pd.isna(waktu):
+                continue
 
             # FILTER UNIT
             if unit_filter and unit_filter not in str(unit):
@@ -192,11 +195,14 @@ def halaman_true():
                 if waktu.hour != int(jam_filter):
                     continue
 
-            # 🔥 GENERATE PID
+            # PID
             pid = f"{unit}-{alert}_{waktu.strftime('%Y%m%d_%H%M%S')}"
 
-            # 🔥 VIDEO URL (dummy, bisa diganti nanti)
-            video_url = f"https://your-video-server/{pid}.mp4"
+            # 🔥 AMBIL VIDEO ASLI
+            video_url = r.get("URL VIDEO")
+
+            if not video_url or str(video_url).strip() == "":
+                video_url = "#"
 
             rows.append([
                 pid,
@@ -206,8 +212,11 @@ def halaman_true():
                 video_url
             ])
 
-        except:
+        except Exception as e:
+            print("ERROR:", e)
             continue
+
+    print("FINAL ROW:", len(rows))
 
     return render_template("true.html", data=rows)
 
