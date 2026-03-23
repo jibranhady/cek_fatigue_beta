@@ -4,55 +4,157 @@
 <meta charset="UTF-8">
 <title>Cek PID Alert Fatigue MH02</title>
 
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
+<!-- FAVICON -->
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+<!-- OCR LIB -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
 <style>
-body { background: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; }
-.navbar { background: #ffffff; border-bottom: 3px solid #F5C400; }
-.title-glow { font-weight: 700; font-size: 20px; color: #2F4B8F; }
-.subtitle { color: #64748b; font-size: 12px; }
-.card { background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
-label { color: #2F4B8F; font-weight: 500; font-size: 13px; }
-textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
-.btn-primary { background: #2F4B8F; border: none; border-radius: 10px; }
-.btn-primary:hover { background: #1E3A8A; }
-.table thead { background: #F5C400; }
-.badge-true { background: #16a34a; }
-.badge-false { background: #dc2626; }
-.ltime-good { color: #16a34a; }
-.ltime-mid { color: #eab308; }
-.ltime-bad { color: #dc2626; }
-.table-responsive { max-height: 600px; overflow-y: auto; }
+
+/* BODY */
+body {
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: 'Inter', sans-serif;
+}
+
+/* NAVBAR */
+.navbar {
+    background: #ffffff;
+    border-bottom: 3px solid #F5C400;
+}
+
+/* TITLE */
+.title-glow {
+    font-weight: 700;
+    font-size: 20px;
+    color: #2F4B8F;
+}
+
+/* SUBTITLE */
+.subtitle {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* CARD */
+.card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+/* LABEL */
+label {
+    color: #2F4B8F;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+/* INPUT */
+textarea, .form-select {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+}
+
+textarea::placeholder {
+    color: #94a3b8;
+}
+
+/* BUTTON */
+.btn-primary {
+    background: #2F4B8F;
+    border: none;
+    border-radius: 10px;
+}
+
+.btn-primary:hover {
+    background: #1E3A8A;
+}
+
+.btn-outline-light {
+    border: 1px solid #2F4B8F;
+    color: #2F4B8F;
+}
+
+/* TABLE */
+.table thead {
+    background: #F5C400;
+    color: #0f172a;
+}
+
+.table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+/* BADGE */
+.badge-true { background: #16a34a; color:white; }
+.badge-false { background: #dc2626; color:white; }
+
+/* LTIME */
+.ltime-good { color:#16a34a; }
+.ltime-mid { color:#eab308; }
+.ltime-bad { color:#dc2626; }
+
+/* SCROLL */
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* OCR AREA */
+#pasteArea {
+    border:2px dashed #cbd5e1;
+    padding:20px;
+    text-align:center;
+    border-radius:10px;
+    background:#f8fafc;
+    color:#64748b;
+}
+
 </style>
 </head>
 
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar shadow-sm">
     <div class="container d-flex align-items-center gap-3">
-        <img src="{{ url_for('static', filename='logo.png') }}" height="60"
-             style="background:white; padding:4px; border-radius:8px;">
+
+        <div style="background:white; padding:6px; border-radius:8px;">
+            <img src="{{ url_for('static', filename='logo.png') }}" height="50">
+        </div>
+
         <div>
             <div class="title-glow">Fatigue Monitoring System</div>
             <div class="subtitle">Cek PID Alert MH02</div>
         </div>
+
     </div>
 </nav>
 
 <div class="container mt-4">
 
-    <div class="mb-3">
-        <div class="title-glow">Cek PID Alert</div>
-        <div class="subtitle">Realtime fatigue validation system</div>
-    </div>
+    <div class="title-glow mb-2">Cek PID Alert</div>
+    <div class="subtitle mb-3">Realtime fatigue validation system</div>
 
     <!-- FORM -->
     <div class="card p-4">
         <form method="post">
+
+            <!-- OCR PASTE -->
+            <div class="mb-3">
+                <label>Paste Screenshot (Ctrl + V)</label>
+                <div id="pasteArea">Paste image here...</div>
+            </div>
+
             <div class="mb-3">
                 <label>Select Site</label>
                 <select name="site" class="form-select">
@@ -63,7 +165,8 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
 
             <div class="mb-2">
                 <label>Input PID Alert</label>
-                <textarea name="raw" id="rawInput" class="form-control" rows="6"></textarea>
+                <textarea name="raw" id="rawInput" class="form-control" rows="6"
+                    placeholder="SLS30I614-YAWNING_20260309_235021"></textarea>
             </div>
 
             <div class="mt-3 d-flex gap-2">
@@ -71,22 +174,20 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
                 <button type="button" class="btn btn-outline-light"
                     onclick="document.getElementById('rawInput').value=''">CLEAR</button>
             </div>
+
         </form>
     </div>
 
     {% if hasil %}
     <div class="card mt-4 p-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="title-glow mb-0">SYSTEM RESULT</h5>
-            <div>
-                <a href="/export" class="btn btn-success btn-sm">EXPORT</a>
-                <button class="btn btn-primary btn-sm" onclick="kirimSemua()">🚀 Kirim Semua</button>
-            </div>
-        </div>
+        <!-- COPY BUTTON -->
+        <button class="btn btn-primary btn-sm mb-3" onclick="copySelectedColumns()">
+            Copy Time Data
+        </button>
 
         <div class="table-responsive">
-            <table class="table align-middle text-center">
+            <table class="table text-center align-middle">
                 <thead>
                     <tr>
                         <th>PID</th>
@@ -96,7 +197,6 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
                         <th>BEDMS</th>
                         <th>LTIME</th>
                         <th>STATUS</th>
-                        <th>KIRIM</th>
                     </tr>
                 </thead>
 
@@ -104,11 +204,17 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
                 {% for r in hasil %}
                 <tr>
                     <td>{{ r[0] }}</td>
-                    <td class="fw-bold">{{ r[1] }}</td>
+                    <td>{{ r[1] }}</td>
                     <td>{{ r[2] }}</td>
                     <td>{{ r[3] }}</td>
                     <td>{{ r[4] }}</td>
-                    <td>{{ r[5] }}</td>
+
+                    <td class="
+                        {% if '0m' in r[5] %} ltime-good
+                        {% elif '1m' in r[5] %} ltime-mid
+                        {% else %} ltime-bad {% endif %}">
+                        {{ r[5] }}
+                    </td>
 
                     <td>
                         {% if r[6] == "TRUE" %}
@@ -117,19 +223,13 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
                             <span class="badge badge-false">FALSE</span>
                         {% endif %}
                     </td>
-
-                    <td>
-                        <button class="btn btn-sm btn-primary"
-                            onclick="kirimRow(this)">
-                            Kirim
-                        </button>
-                    </td>
-
                 </tr>
                 {% endfor %}
                 </tbody>
+
             </table>
         </div>
+
     </div>
     {% endif %}
 
@@ -137,61 +237,54 @@ textarea, .form-select { background: #f8fafc; border: 1px solid #e2e8f0; }
 
 <script>
 
-const URL_API = "https://script.google.com/macros/s/AKfycbwcyrJRlEV5PjPproGf8_fQbSZ-kmoUmbqS9KWAImuQMK0-aSLNsWZgEGBKYGRxVZ3iMg/exec";
+// ================= OCR =================
+const pasteArea = document.getElementById("pasteArea");
+const textarea = document.getElementById("rawInput");
 
-// ==========================
-// KIRIM PER ROW (FIX CORS)
-// ==========================
-function kirimRow(btn) {
+pasteArea.addEventListener("paste", async (event) => {
+    const items = event.clipboardData.items;
 
-    const row = btn.parentElement.parentElement;
-    const cells = row.children;
+    for (let item of items) {
+        if (item.type.indexOf("image") !== -1) {
 
-    const data = {
-        pid: cells[0].innerText,
-        unit: cells[1].innerText,
-        alert: cells[2].innerText,
-        waktu: cells[3].innerText,
-        bedms: cells[4].innerText,
-        ltime: cells[5].innerText,
-        status: cells[6].innerText,
-        intervensi: "WEB"
-    };
+            const file = item.getAsFile();
+            const url = URL.createObjectURL(file);
 
-    btn.disabled = true;
-    btn.innerText = "Loading...";
+            pasteArea.innerHTML = "Processing OCR... ⏳";
 
-    fetch(URL_API, {
-        method: "POST",
-        mode: "no-cors", // 🔥 FIX CORS
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-    })
-    .then(() => {
-        btn.innerText = "✓";
-        btn.classList.remove("btn-primary");
-        btn.classList.add("btn-success");
-    })
-    .catch(() => {
-        btn.innerText = "Error";
-        btn.disabled = false;
-    });
-}
+            const { data: { text } } = await Tesseract.recognize(url, 'eng');
 
-// ==========================
-// KIRIM SEMUA
-// ==========================
-function kirimSemua() {
-    document.querySelectorAll("tbody button").forEach(btn => {
-        if (!btn.classList.contains("btn-success")) {
-            kirimRow(btn);
+            // FILTER BIAR RAPI
+            let filtered = text.match(/[A-Z0-9\-_:]+/g);
+
+            textarea.value = filtered ? filtered.join("\n") : text;
+
+            pasteArea.innerHTML = "Done! ✅";
         }
-    });
-}
+    }
+});
 
-document.getElementById("rawInput").focus();
+// ================= COPY MULTI COLUMN =================
+function copySelectedColumns() {
+    let rows = document.querySelectorAll("table tbody tr");
+    let result = [];
+
+    rows.forEach(row => {
+        let cells = row.querySelectorAll("td");
+
+        let timeAlert = cells[3]?.innerText.trim();
+        let bedms     = cells[4]?.innerText.trim();
+        let ltime     = cells[5]?.innerText.trim();
+
+        result.push(`${timeAlert}\t${bedms}\t${ltime}`);
+    });
+
+    let text = result.join("\n");
+
+    navigator.clipboard.writeText(text);
+
+    alert("Copied Time Data!");
+}
 
 </script>
 
