@@ -5,13 +5,9 @@
 <title>Cek PID Alert Fatigue MH02</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<!-- FAVICON -->
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-
-<!-- OCR LIB -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <style>
@@ -21,6 +17,46 @@ body {
     background: #f8fafc;
     color: #0f172a;
     font-family: 'Inter', sans-serif;
+    margin:0;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    position: fixed;
+    padding: 20px;
+}
+
+.sidebar h4 {
+    font-weight: 700;
+    color: #2F4B8F;
+}
+
+.sidebar a {
+    display: block;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #334155;
+}
+
+.sidebar a:hover {
+    background: #f1f5f9;
+}
+
+.sidebar .active {
+    background: #2F4B8F;
+    color: white;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main {
+    margin-left: 240px;
+    padding: 20px;
 }
 
 /* NAVBAR */
@@ -64,10 +100,6 @@ textarea, .form-select {
     color: #0f172a;
 }
 
-textarea::placeholder {
-    color: #94a3b8;
-}
-
 /* BUTTON */
 .btn-primary {
     background: #2F4B8F;
@@ -87,7 +119,6 @@ textarea::placeholder {
 /* TABLE */
 .table thead {
     background: #F5C400;
-    color: #0f172a;
 }
 
 .table tbody tr:hover {
@@ -98,7 +129,7 @@ textarea::placeholder {
 .badge-true { background: #16a34a; color:white; }
 .badge-false { background: #dc2626; color:white; }
 
-/* LTIME */
+/* LTIME (INI DIPERTAHANKAN 🔥) */
 .ltime-good { color:#16a34a; }
 .ltime-mid { color:#eab308; }
 .ltime-bad { color:#dc2626; }
@@ -123,6 +154,16 @@ textarea::placeholder {
 </head>
 
 <body>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar">
+    <h4>Fatigue</h4>
+    <a href="/" class="active">🏠 Home</a>
+    <a href="/true">🔥 Dashboard TRUE</a>
+</div>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
 
 <!-- NAVBAR -->
 <nav class="navbar shadow-sm">
@@ -149,7 +190,6 @@ textarea::placeholder {
     <div class="card p-4">
         <form method="post">
 
-            <!-- OCR PASTE -->
             <div class="mb-3">
                 <label>Paste Screenshot (Ctrl + V)</label>
                 <div id="pasteArea">Paste image here...</div>
@@ -165,8 +205,7 @@ textarea::placeholder {
 
             <div class="mb-2">
                 <label>Input PID Alert</label>
-                <textarea name="raw" id="rawInput" class="form-control" rows="6"
-                    placeholder="SLS30I614-YAWNING_20260309_235021"></textarea>
+                <textarea name="raw" id="rawInput" class="form-control" rows="6"></textarea>
             </div>
 
             <div class="mt-3 d-flex gap-2">
@@ -181,7 +220,6 @@ textarea::placeholder {
     {% if hasil %}
     <div class="card mt-4 p-4">
 
-        <!-- COPY BUTTON -->
         <button class="btn btn-primary btn-sm mb-3" onclick="copySelectedColumns()">
             Copy Time Data
         </button>
@@ -234,14 +272,11 @@ textarea::placeholder {
     {% endif %}
 
 </div>
+</div>
 
 <script>
-
-// ================= OCR =================
-const pasteArea = document.getElementById("pasteArea");
-const textarea = document.getElementById("rawInput");
-
-pasteArea.addEventListener("paste", async (event) => {
+// OCR
+document.getElementById("pasteArea").addEventListener("paste", async (event) => {
     const items = event.clipboardData.items;
 
     for (let item of items) {
@@ -250,23 +285,17 @@ pasteArea.addEventListener("paste", async (event) => {
             const file = item.getAsFile();
             const url = URL.createObjectURL(file);
 
-            pasteArea.innerHTML = "Processing OCR... ⏳";
-
             const { data: { text } } = await Tesseract.recognize(url, 'eng');
 
-            // FILTER BIAR RAPI
             let filtered = text.match(/[A-Z0-9\-_:]+/g);
-
-            textarea.value = filtered ? filtered.join("\n") : text;
-
-            pasteArea.innerHTML = "Done! ✅";
+            document.getElementById("rawInput").value = filtered ? filtered.join("\n") : text;
         }
     }
 });
 
-// ================= COPY MULTI COLUMN =================
+// COPY
 function copySelectedColumns() {
-    let rows = document.querySelectorAll("table tbody tr");
+    let rows = document.querySelectorAll("tbody tr");
     let result = [];
 
     rows.forEach(row => {
@@ -279,13 +308,9 @@ function copySelectedColumns() {
         result.push(`${timeAlert}\t${bedms}\t${ltime}`);
     });
 
-    let text = result.join("\n");
-
-    navigator.clipboard.writeText(text);
-
+    navigator.clipboard.writeText(result.join("\n"));
     alert("Copied Time Data!");
 }
-
 </script>
 
 </body>
