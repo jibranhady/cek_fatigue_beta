@@ -22,16 +22,14 @@ df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 df_raw["unitno"] = df_raw["unitno"].astype(str).str.strip().str.upper()
 
-# 🔥 NORMALISASI ANGKA
+# NORMALISASI
 df_raw["unit_clean"] = df_raw["unitno"].apply(lambda x: ''.join(filter(str.isdigit, str(x))))
-
-# 🔥 BUANG NULL
 df_raw = df_raw[df_raw["unit_clean"] != ""]
 
 last_rows = []
 
 # ==========================
-# ALERT MAPPING
+# ALERT MAP
 # ==========================
 def map_alert(alert):
     mapping = {
@@ -43,7 +41,7 @@ def map_alert(alert):
     return mapping.get(str(alert).strip().upper(), str(alert).upper().replace(" ", "_"))
 
 # ==========================
-# HITUNG LTIME
+# LTIME
 # ==========================
 def hitung_ltime(alert, bedms):
     try:
@@ -56,15 +54,26 @@ def hitung_ltime(alert, bedms):
         if total_sec < 0:
             return "-"
 
-        m = total_sec // 60
-        s = total_sec % 60
-
-        return f"{m}m {s}s"
+        return f"{total_sec//60}m {total_sec%60}s"
     except:
         return "-"
 
 # ==========================
-# ROUTE UTAMA (INDEX)
+# STATUS NORMALIZER 🔥
+# ==========================
+def normalize_status(val):
+    if pd.isnull(val):
+        return "NOT FOUND"
+
+    val = str(val).strip().lower()
+
+    if val in ["true", "t", "1"]:
+        return "TRUE"
+    else:
+        return "FALSE"
+
+# ==========================
+# INDEX (FIX MATCHING)
 # ==========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -116,11 +125,17 @@ def index():
                 nama_unit = cek_unit.iloc[0]["unitno"]
                 angka_unit = ''.join(filter(str.isdigit, str(nama_unit)))
 
-                match = df_event[
-                    (df_event["ANGKA_UNIT"] == angka_unit) &
-                    (df_event["WAKTU KEJADIAN"] >= waktu_lookup - timedelta(minutes=2)) &
-                    (df_event["WAKTU KEJADIAN"] <= waktu_lookup + timedelta(minutes=2))
-                ]
+                # 🔥 MATCH PALING DEKAT
+                df_unit_match = df_event[df_event["ANGKA_UNIT"] == angka_unit].copy()
+
+                if df_unit_match.empty:
+                    match = pd.DataFrame()
+                else:
+                    df_unit_match["selisih"] = (df_unit_match["WAKTU KEJADIAN"] - waktu_lookup).abs()
+                    match = df_unit_match.sort_values("selisih").head(1)
+
+                    if match.iloc[0]["selisih"] > timedelta(minutes=2):
+                        match = pd.DataFrame()
 
                 if match.empty:
                     rows.append([
@@ -140,8 +155,8 @@ def index():
 
                     ltime = hitung_ltime(time_alert, time_bedms)
 
-                    status_val = res.get("INTERVENSI - STATUS CONTEXT")
-                    status = str(status_val).strip().upper() if pd.notnull(status_val) else "NOT FOUND"
+                    # 🔥 STATUS FIX
+                    status = normalize_status(res.get("INTERVENSI - STATUS CONTEXT"))
 
                     rows.append([
                         raw,
@@ -167,7 +182,7 @@ def index():
     return render_template("index.html", hasil=hasil)
 
 # ==========================
-# ROUTE TRUE
+# ROUTE TRUE (AMAN)
 # ==========================
 @app.route("/true")
 def halaman_true():
@@ -178,16 +193,14 @@ def halaman_true():
 
     table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
 
-    query = f"""
-        SELECT *
-        FROM {table_name}
-        WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
-    """
-
     with engine.connect() as conn:
-        df = pd.read_sql(text(query), conn)
+        df = pd.read_sql(text(f"""
+            SELECT *
+            FROM {table_name}
+            WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
+        """), conn)
 
-    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
+    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"])
 
     rows = []
 
@@ -201,15 +214,11 @@ def halaman_true():
                 continue
 
             device_id = device_match.iloc[0]["deviceid"]
-
             waktu = r["WAKTU KEJADIAN"]
 
-            # 🔥 FILTER JAM
-            if jam_filter:
-                if waktu.hour != int(jam_filter):
-                    continue
+            if jam_filter and waktu.hour != int(jam_filter):
+                continue
 
-            # 🔥 FILTER UNIT
             if unit_filter and unit_filter.upper() not in unit.upper():
                 continue
 
@@ -229,98 +238,6 @@ def halaman_true():
             continue
 
     return render_template("true.html", data=rows)
-
-# ==========================
-# ROUTE DEVICE STATUS
-# ==========================
-@app.route("/devicestatus")
-def device_status():
-
-    query = """
-        SELECT "KODE KENDARAAN", "WAKTU KEJADIAN"
-        FROM tbl_brcg
-        WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '7 DAYS'
-    """
-
-    with engine.connect() as conn:
-        df = pd.read_sql(text(query), conn)
-
-    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
-
-    df["unit_clean"] = df["KODE KENDARAAN"].astype(str).apply(
-        lambda x: ''.join(filter(str.isdigit, x))
-    )
-
-    df["tanggal"] = df["WAKTU KEJADIAN"].dt.date
-
-    today = datetime.now().date()
-
-    results = []
-
-    for _, r in df_raw.iterrows():
-
-        unit_clean = r["unit_clean"]
-        unit_name = r["unitno"]
-        device_id = r["deviceid"]
-
-        df_unit = df[df["unit_clean"] == unit_clean]
-
-        daily = df_unit.groupby("tanggal").size()
-
-        mean = daily.mean() if len(daily) > 0 else 0
-        max_val = daily.max() if len(daily) > 0 else 0
-        today_count = daily.get(today, 0)
-
-        # 🔥 LAST ALERT
-        if not df_unit.empty:
-            last_time = df_unit["WAKTU KEJADIAN"].max()
-            last_str = last_time.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            last_str = "-"
-
-        if today_count == 0:
-            status = "NO DATA"
-        elif max_val > 0 and today_count >= max_val * 1.5:
-            status = "SPIKE"
-        elif today_count > mean + 3:
-            status = "HIGH"
-        else:
-            status = "NORMAL"
-
-        results.append({
-            "device": device_id,
-            "unit": unit_name,
-            "avg": round(mean, 2),
-            "max": int(max_val),
-            "today": int(today_count),
-            "last": last_str,
-            "status": status
-        })
-
-    results = sorted(results, key=lambda x: x["today"], reverse=True)
-
-    return render_template("devicestatus.html", data=results)
-
-# ==========================
-# EXPORT
-# ==========================
-@app.route("/export")
-def export_excel():
-    global last_rows
-
-    df_export = pd.DataFrame(last_rows, columns=[
-        "PID", "Unit", "Alert", "Time Alert",
-        "Time BeDMS", "LTime", "Status"
-    ])
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False)
-
-    output.seek(0)
-
-    return send_file(output, download_name="hasil.xlsx", as_attachment=True)
 
 # ==========================
 # RUN
