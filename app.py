@@ -22,8 +22,11 @@ df_raw = pd.read_excel(os.path.join(BASE_DIR, "Rawdata.xlsx"))
 df_raw["deviceid"] = df_raw["deviceid"].astype(str).str.strip().str.upper()
 df_raw["unitno"] = df_raw["unitno"].astype(str).str.strip().str.upper()
 
-# NORMALISASI
+# 🔥 NORMALISASI ANGKA
 df_raw["unit_clean"] = df_raw["unitno"].apply(lambda x: ''.join(filter(str.isdigit, str(x))))
+
+# 🔥 BUANG NULL
+df_raw = df_raw[df_raw["unit_clean"] != ""]
 
 last_rows = []
 
@@ -61,7 +64,7 @@ def hitung_ltime(alert, bedms):
         return "-"
 
 # ==========================
-# ROUTE UTAMA
+# ROUTE UTAMA (INDEX)
 # ==========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -164,26 +167,17 @@ def index():
     return render_template("index.html", hasil=hasil)
 
 # ==========================
-# ROUTE TRUE (TIDAK DIUBAH)
+# ROUTE TRUE
 # ==========================
 @app.route("/true")
 def halaman_true():
 
-    site = request.args.get("site", "brcg")
-    unit_filter = request.args.get("unit", "")
-    jam_filter = request.args.get("jam", "")
-
-    table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
-
-    query = f"""
-        SELECT *
-        FROM {table_name}
-        WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
-        ORDER BY "WAKTU KEJADIAN" DESC
-    """
-
     with engine.connect() as conn:
-        df = pd.read_sql(text(query), conn)
+        df = pd.read_sql(text("""
+            SELECT *
+            FROM tbl_brcg
+            WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
+        """), conn)
 
     df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
 
@@ -191,32 +185,27 @@ def halaman_true():
 
     for _, r in df.iterrows():
         try:
-            unit = str(r.get("KODE KENDARAAN", "")).upper()
-            alert = r.get("PERINGATAN")
-            waktu = r.get("WAKTU KEJADIAN")
-
-            if pd.isna(waktu):
-                continue
-
+            unit = str(r["KODE KENDARAAN"])
             unit_number = ''.join(filter(str.isdigit, unit))
+
             device_match = df_raw[df_raw["unit_clean"] == unit_number]
-
-            device_id = device_match.iloc[0]["deviceid"] if not device_match.empty else "UNKNOWN"
-
-            if unit_filter and unit_filter not in unit:
+            if device_match.empty:
                 continue
 
-            if jam_filter:
-                if waktu.hour != int(jam_filter):
-                    continue
+            device_id = device_match.iloc[0]["deviceid"]
 
-            alert_en = map_alert(alert)
+            waktu = r["WAKTU KEJADIAN"]
+            alert_en = map_alert(r["PERINGATAN"])
 
             pid = f"{device_id}-{alert_en}_{waktu.strftime('%Y%m%d_%H%M%S')}"
 
-            video_url = r.get("URL VIDEO") or "#"
-
-            rows.append([pid, unit, alert_en, waktu.strftime('%Y-%m-%d %H:%M:%S'), video_url])
+            rows.append([
+                pid,
+                unit,
+                alert_en,
+                waktu.strftime('%Y-%m-%d %H:%M:%S'),
+                r.get("URL VIDEO") or "#"
+            ])
 
         except:
             continue
@@ -224,17 +213,14 @@ def halaman_true():
     return render_template("true.html", data=rows)
 
 # ==========================
-# 🔥 ROUTE ANOMALY (BARU)
+# ROUTE DEVICE STATUS
 # ==========================
-@app.route("/anomaly")
-def anomaly():
+@app.route("/devicestatus")
+def device_status():
 
-    site = request.args.get("site", "brcg")
-    table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
-
-    query = f"""
+    query = """
         SELECT "KODE KENDARAAN", "WAKTU KEJADIAN"
-        FROM {table_name}
+        FROM tbl_brcg
         WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '7 DAYS'
     """
 
@@ -261,12 +247,18 @@ def anomaly():
 
         df_unit = df[df["unit_clean"] == unit_clean]
 
-        daily_counts = df_unit.groupby("tanggal").size()
+        daily = df_unit.groupby("tanggal").size()
 
-        mean = daily_counts.mean() if len(daily_counts) > 0 else 0
-        max_val = daily_counts.max() if len(daily_counts) > 0 else 0
+        mean = daily.mean() if len(daily) > 0 else 0
+        max_val = daily.max() if len(daily) > 0 else 0
+        today_count = daily.get(today, 0)
 
-        today_count = daily_counts.get(today, 0)
+        # 🔥 LAST ALERT
+        if not df_unit.empty:
+            last_time = df_unit["WAKTU KEJADIAN"].max()
+            last_str = last_time.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            last_str = "-"
 
         if today_count == 0:
             status = "NO DATA"
@@ -278,15 +270,18 @@ def anomaly():
             status = "NORMAL"
 
         results.append({
-            "unit": unit_name,
             "device": device_id,
+            "unit": unit_name,
             "avg": round(mean, 2),
             "max": int(max_val),
             "today": int(today_count),
+            "last": last_str,
             "status": status
         })
 
-    return render_template("anomaly.html", data=results)
+    results = sorted(results, key=lambda x: x["today"], reverse=True)
+
+    return render_template("devicestatus.html", data=results)
 
 # ==========================
 # EXPORT
