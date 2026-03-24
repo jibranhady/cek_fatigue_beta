@@ -172,12 +172,20 @@ def index():
 @app.route("/true")
 def halaman_true():
 
+    site = request.args.get("site", "brcg")
+    unit_filter = request.args.get("unit", "")
+    jam_filter = request.args.get("jam", "")
+
+    table_name = "tbl_brcb" if site == "brcb" else "tbl_brcg"
+
+    query = f"""
+        SELECT *
+        FROM {table_name}
+        WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
+    """
+
     with engine.connect() as conn:
-        df = pd.read_sql(text("""
-            SELECT *
-            FROM tbl_brcg
-            WHERE LOWER("INTERVENSI - STATUS CONTEXT") = 'true'
-        """), conn)
+        df = pd.read_sql(text(query), conn)
 
     df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
 
@@ -195,6 +203,16 @@ def halaman_true():
             device_id = device_match.iloc[0]["deviceid"]
 
             waktu = r["WAKTU KEJADIAN"]
+
+            # 🔥 FILTER JAM
+            if jam_filter:
+                if waktu.hour != int(jam_filter):
+                    continue
+
+            # 🔥 FILTER UNIT
+            if unit_filter and unit_filter.upper() not in unit.upper():
+                continue
+
             alert_en = map_alert(r["PERINGATAN"])
 
             pid = f"{device_id}-{alert_en}_{waktu.strftime('%Y%m%d_%H%M%S')}"
