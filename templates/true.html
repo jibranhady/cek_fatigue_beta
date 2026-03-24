@@ -66,6 +66,7 @@ body { background:#f8fafc; font-family:'Inter'; margin:0; }
 </style>
 
 <script>
+// AUTO REFRESH
 setInterval(() => location.reload(), 10000);
 </script>
 
@@ -84,17 +85,14 @@ setInterval(() => location.reload(), 10000);
 <!-- MAIN -->
 <div class="main">
 
-<!-- NAVBAR (FIX CLEAN) -->
+<!-- NAVBAR -->
 <nav class="navbar shadow-sm mb-3 p-2">
     <div class="d-flex align-items-center gap-3">
-
         <img src="{{ url_for('static', filename='logo.png') }}" height="60">
-
         <div>
             <div class="title-glow">Fatigue Monitoring System</div>
             <div class="subtitle">Dashboard Monitoring</div>
         </div>
-
     </div>
 </nav>
     
@@ -112,15 +110,16 @@ setInterval(() => location.reload(), 10000);
     <option value="brcb">BRCB</option>
 </select>
 
-<input type="text" id="unit" class="form-control w-auto" placeholder="Filter Unit">
+<!-- 🔥 REALTIME FILTER -->
+<input type="text" id="unit" class="form-control w-auto" placeholder="Filter Unit" onkeyup="filterUnit()">
 
 <select id="jam" class="form-select w-auto">
     <option value="">Semua Jam</option>
     <option value="7">07</option>
-    <option value="8">12</option>
-    <option value="9">15</option>
-    <option value="10">20</option>
-    <option value="11">23</option>
+    <option value="8">08</option>
+    <option value="9">09</option>
+    <option value="10">10</option>
+    <option value="11">11</option>
 </select>
 
 <button class="btn btn-primary" onclick="applyFilter()">Filter</button>
@@ -131,7 +130,7 @@ setInterval(() => location.reload(), 10000);
 <!-- TABLE -->
 <div class="card p-3">
 
-<table class="table text-center">
+<table class="table text-center" id="tableData">
 <thead>
 <tr>
 <th>PID</th>
@@ -162,12 +161,35 @@ setInterval(() => location.reload(), 10000);
 </div>
 
 <script>
+
+// 🔥 BACKEND FILTER
 function applyFilter(){
     const site=document.getElementById("site").value;
     const unit=document.getElementById("unit").value;
     const jam=document.getElementById("jam").value;
     window.location=`/true?site=${site}&unit=${unit}&jam=${jam}`;
 }
+
+// 🔥 REALTIME FILTER UNIT
+function filterUnit() {
+    const input = document.getElementById("unit").value.toUpperCase();
+    const table = document.getElementById("tableData");
+    const tr = table.getElementsByTagName("tr");
+
+    for (let i = 1; i < tr.length; i++) {
+        const td = tr[i].getElementsByTagName("td")[1]; // kolom UNIT
+        if (td) {
+            const txtValue = td.textContent || td.innerText;
+
+            if (txtValue.toUpperCase().indexOf(input) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+}
+
 </script>
 
 </body>
