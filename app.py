@@ -238,6 +238,86 @@ def halaman_true():
             continue
 
     return render_template("true.html", data=rows)
+    
+# ==========================
+# DEVICE STATUS
+# ==========================
+@app.route("/devicestatus")
+def device_status():
+
+    with engine.connect() as conn:
+        df = pd.read_sql(text("""
+            SELECT *
+            FROM tbl_brcg
+            WHERE "WAKTU KEJADIAN" > NOW() - INTERVAL '7 DAYS'
+        """), conn)
+
+    df["WAKTU KEJADIAN"] = pd.to_datetime(df["WAKTU KEJADIAN"], errors='coerce')
+
+    # ambil angka unit
+    df["unit_clean"] = df["KODE KENDARAAN"].astype(str).apply(lambda x: ''.join(filter(str.isdigit, x)))
+    df = df[df["unit_clean"] != ""]
+
+    # tanggal saja
+    df["tanggal"] = df["WAKTU KEJADIAN"].dt.date
+
+    today = datetime.utcnow().date()
+
+    results = []
+
+    for _, r in df_raw.iterrows():
+
+        unit_clean = r["unit_clean"]
+        unit_name = r["unitno"]
+        device_id = r["deviceid"]
+
+        df_unit = df[df["unit_clean"] == unit_clean]
+
+        # ===== SAFE COUNT =====
+        if df_unit.empty:
+            mean = 0
+            max_val = 0
+            today_count = 0
+        else:
+            daily = df_unit.groupby("tanggal").size()
+
+            mean = float(daily.mean())
+            max_val = int(daily.max())
+
+            today_count = int(daily[daily.index == today].sum())
+
+        # ===== LAST ALERT =====
+        if not df_unit.empty:
+            last_time = df_unit["WAKTU KEJADIAN"].max()
+
+            if pd.notnull(last_time):
+                last_str = last_time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                last_str = "-"
+        else:
+            last_str = "-"
+
+        # ===== STATUS =====
+        if today_count == 0:
+            status = "NO DATA"
+        elif max_val > 0 and today_count >= max_val * 1.5:
+            status = "SPIKE"
+        elif today_count > mean + 3:
+            status = "HIGH"
+        else:
+            status = "NORMAL"
+
+        results.append({
+            "device": device_id,
+            "unit": unit_name,
+            "avg": round(mean, 2),
+            "max": max_val,
+            "today": today_count,
+            "last": last_str,
+            "status": status
+        })
+
+    return render_template("devicestatus.html", data=results)
 
 # ==========================
 # RUN
