@@ -117,9 +117,9 @@ setInterval(() => {
 <!-- SIDEBAR -->
 <div class="sidebar">
     <h4>Fatigue</h4>
-    <a href="/">🏠 Home</a>
-    <a href="/true">🔥 Dashboard TRUE</a>
-    <a href="/devicestatus" class="active">📊 Device Status</a>
+    <a href="/">Home</a>
+    <a href="/true">Dashboard TRUE</a>
+    <a href="/devicestatus" class="active">Device Status</a>
 </div>
 
 <!-- MAIN -->
