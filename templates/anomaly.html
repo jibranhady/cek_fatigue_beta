@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Anomaly Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+
+body {
+    background: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    position: fixed;
+    padding: 20px;
+}
+
+.sidebar h4 {
+    font-weight: 700;
+    color: #2F4B8F;
+}
+
+.sidebar a {
+    display: block;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #334155;
+}
+
+.sidebar a:hover {
+    background: #f1f5f9;
+}
+
+.sidebar .active {
+    background: #2F4B8F;
+    color: white;
+}
+
+/* MAIN */
+.main {
+    margin-left: 240px;
+    padding: 20px;
+}
+
+/* NAVBAR */
+.navbar {
+    background: #ffffff;
+    border-bottom: 3px solid #F5C400;
+}
+
+/* TITLE */
+.title-glow {
+    font-weight: 700;
+    font-size: 20px;
+    color: #2F4B8F;
+}
+
+.subtitle {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* CARD */
+.card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+/* TABLE */
+.table thead {
+    background: #F5C400;
+}
+
+.table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+/* BADGE STATUS */
+.badge-normal { background:#16a34a; }
+.badge-high { background:#eab308; }
+.badge-spike { background:#dc2626; }
+.badge-nodata { background:#0f172a; }
+
+</style>
+
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h4>Fatigue</h4>
+    <a href="/">🏠 Home</a>
+    <a href="/true">🔥 Dashboard TRUE</a>
+    <a href="/anomaly" class="active">🚨 Anomaly</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- NAVBAR (SAMA PERSIS) -->
+<nav class="navbar shadow-sm mb-3 p-2">
+    <div class="container d-flex align-items-center gap-3">
+
+        <img src="{{ url_for('static', filename='logo.png') }}" height="45">
+
+        <div>
+            <div class="title-glow">Fatigue Monitoring System</div>
+            <div class="subtitle">Anomaly Detection Dashboard</div>
+        </div>
+
+    </div>
+</nav>
+
+<div class="container">
+
+<!-- TITLE -->
+<div class="title-glow mb-2">Anomaly Detection</div>
+<div class="subtitle mb-3">Smart detection of abnormal unit behavior (7 days analysis)</div>
+
+<!-- CARD -->
+<div class="card p-3">
+
+<div class="table-responsive">
+
+<table class="table text-center align-middle">
+<thead>
+<tr>
+<th>DEVICE</th>
+<th>UNIT</th>
+<th>AVG (7D)</th>
+<th>MAX</th>
+<th>TODAY</th>
+<th>STATUS</th>
+</tr>
+</thead>
+
+<tbody>
+{% for r in data %}
+<tr>
+
+<td><b>{{ r.device }}</b></td>
+<td>{{ r.unit }}</td>
+<td>{{ r.avg }}</td>
+<td>{{ r.max }}</td>
+<td>{{ r.today }}</td>
+
+<td>
+{% if r.status == "NORMAL" %}
+<span class="badge badge-normal">NORMAL</span>
+
+{% elif r.status == "HIGH" %}
+<span class="badge badge-high">HIGH</span>
+
+{% elif r.status == "SPIKE" %}
+<span class="badge badge-spike">SPIKE</span>
+
+{% else %}
+<span class="badge badge-nodata">NO DATA</span>
+{% endif %}
+</td>
+
+</tr>
+{% endfor %}
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>
