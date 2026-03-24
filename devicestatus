@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Device Status</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body {
+    background: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    position: fixed;
+    padding: 20px;
+}
+
+.sidebar h4 {
+    font-weight: 700;
+    color: #2F4B8F;
+}
+
+.sidebar a {
+    display: block;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #334155;
+}
+
+.sidebar a:hover {
+    background: #f1f5f9;
+}
+
+.sidebar .active {
+    background: #2F4B8F;
+    color: white;
+}
+
+/* MAIN */
+.main {
+    margin-left: 240px;
+    padding: 20px;
+}
+
+/* NAVBAR */
+.navbar {
+    background: #ffffff;
+    border-bottom: 3px solid #F5C400;
+}
+
+/* TITLE */
+.title-glow {
+    font-weight: 700;
+    font-size: 20px;
+    color: #2F4B8F;
+}
+
+.subtitle {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* CARD */
+.card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+/* TABLE */
+.table thead {
+    background: #F5C400;
+}
+
+.table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+/* STATUS BADGE */
+.badge-normal { background:#16a34a; }
+.badge-high { background:#eab308; }
+.badge-spike { background:#dc2626; }
+.badge-nodata { background:#0f172a; }
+
+/* 🔥 HIGHLIGHT ROW */
+.row-spike { background:#fee2e2 !important; }
+.row-high { background:#fef9c3 !important; }
+.row-nodata { background:#e2e8f0 !important; }
+
+</style>
+
+<script>
+// AUTO REFRESH (optional)
+setInterval(() => {
+    location.reload();
+}, 15000);
+</script>
+
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h4>Fatigue</h4>
+    <a href="/">🏠 Home</a>
+    <a href="/true">🔥 Dashboard TRUE</a>
+    <a href="/devicestatus" class="active">📊 Device Status</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- NAVBAR -->
+<nav class="navbar shadow-sm mb-3 p-2">
+    <div class="container d-flex align-items-center gap-3">
+
+        <img src="{{ url_for('static', filename='logo.png') }}" height="45">
+
+        <div>
+            <div class="title-glow">Fatigue Monitoring System</div>
+            <div class="subtitle">Device Status & Predictive Monitoring</div>
+        </div>
+
+    </div>
+</nav>
+
+<div class="container">
+
+<!-- TITLE -->
+<div class="title-glow mb-2">Device Status</div>
+<div class="subtitle mb-3">Monitoring kondisi device berdasarkan alert 7 hari terakhir</div>
+
+<!-- 🔥 CHART -->
+<div class="card p-3 mb-4">
+    <canvas id="chart"></canvas>
+</div>
+
+<!-- TABLE -->
+<div class="card p-3">
+
+<div class="table-responsive">
+
+<table class="table text-center align-middle">
+<thead>
+<tr>
+<th>DEVICE</th>
+<th>UNIT</th>
+<th>AVG (7D)</th>
+<th>MAX</th>
+<th>TODAY</th>
+<th>LAST ALERT</th>
+<th>STATUS</th>
+</tr>
+</thead>
+
+<tbody>
+{% for r in data %}
+
+<tr class="
+{% if r.status == 'SPIKE' %}row-spike
+{% elif r.status == 'HIGH' %}row-high
+{% elif r.status == 'NO DATA' %}row-nodata
+{% endif %}
+">
+
+<td><b>{{ r.device }}</b></td>
+<td>{{ r.unit }}</td>
+<td>{{ r.avg }}</td>
+<td>{{ r.max }}</td>
+<td>{{ r.today }}</td>
+<td>{{ r.last }}</td>
+
+<td>
+{% if r.status == "NORMAL" %}
+<span class="badge badge-normal">NORMAL</span>
+
+{% elif r.status == "HIGH" %}
+<span class="badge badge-high">HIGH</span>
+
+{% elif r.status == "SPIKE" %}
+<span class="badge badge-spike">SPIKE</span>
+
+{% else %}
+<span class="badge badge-nodata">NO DATA</span>
+{% endif %}
+</td>
+
+</tr>
+
+{% endfor %}
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- 🔥 CHART SCRIPT -->
+<script>
+
+const labels = {{ data | map(attribute='unit') | list | tojson }};
+const values = {{ data | map(attribute='today') | list | tojson }};
+
+new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Alert Today',
+            data: values
+        }]
+    }
+});
+
+</script>
+
+</body>
+</html>
