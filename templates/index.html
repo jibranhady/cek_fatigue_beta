@@ -567,8 +567,39 @@ body {
                 </div>
             </div>
 
-            {% if hasil %}
-            <!-- RESULTS CARD -->
-            <div class="card mt-5">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-
+{% if hasil %}
+<div class="card mt-5">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Hasil Validasi</h5>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>PID</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in hasil %}
+                    <tr>
+                        <td>{{ item.pid }}</td>
+                        <td>
+                            {% if item.status %}
+                                <span class="badge badge-true">TRUE</span>
+                            {% else %}
+                                <span class="badge badge-false">FALSE</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+{% endif %}
