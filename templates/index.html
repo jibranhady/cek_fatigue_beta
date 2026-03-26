@@ -5,151 +5,486 @@
 <title>Cek PID Alert Fatigue MH02</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <style>
+:root {
+    --primary: #1e40af;
+    --primary-dark: #1e3a8a;
+    --accent: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 20px 40px -10px rgb(0 0 0 / 0.2), 0 8px 16px -8px rgb(0 0 0 / 0.1);
+    --gradient-primary: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
 
-/* BODY */
+/* RESET & BASE */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
-    background: #f8fafc;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     color: #0f172a;
     font-family: 'Inter', sans-serif;
-    margin:0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
 
 /* ===== SIDEBAR ===== */
 .sidebar {
-    width: 220px;
+    width: 260px;
     height: 100vh;
-    background: #ffffff;
-    border-right: 1px solid #e2e8f0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--glass-border);
     position: fixed;
-    padding: 20px;
+    padding: 32px 24px;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+}
+
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-primary);
+    opacity: 0.05;
+    z-index: -1;
 }
 
 .sidebar h4 {
-    font-weight: 700;
-    color: #2F4B8F;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 1.5rem;
+    margin-bottom: 32px;
+    letter-spacing: -0.025em;
 }
 
-.sidebar a {
-    display: block;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 8px;
+.sidebar-nav {
+    list-style: none;
+}
+
+.sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    border-radius: 16px;
     text-decoration: none;
-    color: #334155;
+    color: #475569;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-.sidebar a:hover {
-    background: #f1f5f9;
+.sidebar-nav a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-primary);
+    opacity: 0.1;
+    transition: left 0.3s;
+    z-index: -1;
 }
 
-.sidebar .active {
-    background: #2F4B8F;
-    color: white;
+.sidebar-nav a:hover::before,
+.sidebar-nav a.active::before {
+    left: 0;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+    background: rgba(30, 64, 175, 0.1);
+    color: var(--primary);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-md);
+}
+
+.sidebar-nav i {
+    width: 20px;
+    font-size: 1.1rem;
 }
 
 /* ===== MAIN CONTENT ===== */
 .main {
-    margin-left: 240px;
-    padding: 20px;
+    margin-left: 260px;
+    padding: 32px;
+    min-height: 100vh;
+    animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* NAVBAR */
 .navbar {
-    background: #ffffff;
-    border-bottom: 3px solid #F5C400;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-bottom: 3px solid transparent;
+    background-image: linear-gradient(var(--glass-bg), var(--glass-bg)), var(--gradient-accent);
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+    box-shadow: var(--shadow-md);
+    padding: 16px 24px;
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 32px;
 }
 
-/* TITLE */
+.navbar-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.3s ease;
+}
+
+.logo-img:hover {
+    transform: scale(1.05) rotate(5deg);
+}
+
 .title-glow {
-    font-weight: 700;
-    font-size: 20px;
-    color: #2F4B8F;
+    font-weight: 800;
+    font-size: 1.75rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.025em;
 }
 
-/* SUBTITLE */
 .subtitle {
     color: #64748b;
-    font-size: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* MAIN TITLE */
+.page-title {
+    font-weight: 800;
+    font-size: 2.25rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    letter-spacing: -0.025em;
+}
+
+.page-subtitle {
+    color: #64748b;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 32px;
 }
 
 /* CARD */
 .card {
-    background: #ffffff;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-/* LABEL */
-label {
-    color: #2F4B8F;
-    font-weight: 500;
-    font-size: 13px;
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-accent);
 }
 
-/* INPUT */
-textarea, .form-select {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 35px 60px -12px rgb(0 0 0 / 0.25);
+}
+
+.card-body {
+    padding: 32px;
+}
+
+/* FORM ELEMENTS */
+.form-label {
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    margin-bottom: 12px;
+}
+
+.form-control, .form-select {
+    background: rgba(248, 250, 252, 0.8);
+    backdrop-filter: blur(12px);
+    border: 2px solid rgba(226, 232, 240, 0.8);
+    border-radius: 16px;
     color: #0f172a;
+    font-weight: 500;
+    padding: 16px 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
 }
 
-/* BUTTON */
-.btn-primary {
-    background: #2F4B8F;
+.form-control:focus, .form-select:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+    transform: translateY(-2px);
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+/* BUTTONS */
+.btn {
+    border-radius: 16px;
+    font-weight: 600;
+    padding: 14px 28px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
     border: none;
-    border-radius: 10px;
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    box-shadow: 0 12px 24px rgba(30, 64, 175, 0.4);
 }
 
 .btn-primary:hover {
-    background: #1E3A8A;
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(30, 64, 175, 0.5);
 }
 
-.btn-outline-light {
-    border: 1px solid #2F4B8F;
-    color: #2F4B8F;
+.btn-outline-primary {
+    background: transparent;
+    color: var(--primary);
+    border: 2px solid rgba(30, 64, 175, 0.2);
+}
+
+.btn-outline-primary:hover {
+    background: var(--gradient-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* OCR DROP ZONE */
+#pasteArea {
+    border: 3px dashed rgba(99, 102, 241, 0.3);
+    padding: 48px;
+    text-align: center;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+    color: #64748b;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+#pasteArea:hover {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.8));
+    transform: scale(1.02);
+}
+
+#pasteArea::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.6s;
+}
+
+#pasteArea:hover::before {
+    left: 100%;
+}
+
+.paste-icon {
+    font-size: 3rem;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    display: block;
 }
 
 /* TABLE */
-.table thead {
-    background: #F5C400;
+.table {
+    background: transparent;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background: var(--gradient-accent);
+    color: white;
+    font-weight: 700;
+    border: none;
+    padding: 20px 16px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
 }
 
 .table tbody tr:hover {
-    background: #f1f5f9;
+    background: rgba(30, 64, 175, 0.05);
+    transform: scale(1.01);
 }
 
-/* BADGE */
-.badge-true { background: #16a34a; color:white; }
-.badge-false { background: #dc2626; color:white; }
+.table td {
+    padding: 20px 16px;
+    vertical-align: middle;
+    border-color: rgba(226, 232, 240, 0.5);
+}
 
-/* LTIME (INI DIPERTAHANKAN 🔥) */
-.ltime-good { color:#16a34a; }
-.ltime-mid { color:#eab308; }
-.ltime-bad { color:#dc2626; }
+/* BADGES */
+.badge {
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
 
-/* SCROLL */
+.badge-true { 
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-false { 
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* LTIME STATUS */
+.ltime-good { 
+    color: var(--success);
+    font-weight: 700;
+}
+
+.ltime-mid { 
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+.ltime-bad { 
+    color: var(--danger);
+    font-weight: 700;
+}
+
+/* TABLE RESPONSIVE */
 .table-responsive {
     max-height: 600px;
     overflow-y: auto;
+    border-radius: 20px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
 }
 
-/* OCR AREA */
-#pasteArea {
-    border:2px dashed #cbd5e1;
-    padding:20px;
-    text-align:center;
-    border-radius:10px;
-    background:#f8fafc;
-    color:#64748b;
+/* ANIMATIONS */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .main {
+        margin-left: 0;
+    }
+    
+    .page-title {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .main {
+        padding: 20px 16px;
+    }
+    
+    .card-body {
+        padding: 24px 20px;
+    }
+    
+    .navbar-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+    }
+}
 </style>
 </head>
 
@@ -157,160 +492,83 @@ textarea, .form-select {
 
 <!-- ===== SIDEBAR ===== -->
 <div class="sidebar">
-    <h4>Fatigue</h4>
-    <a href="/">Home</a>
-    <a href="/true">Dashboard TRUE</a>
-    <a href="/devicestatus">Device Status</a>
+    <h4><i class="fas fa-brain me-2"></i>Fatigue Monitor</h4>
+    <ul class="sidebar-nav">
+        <li><a href="/" class="active"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="/true"><i class="fas fa-chart-line"></i> Dashboard TRUE</a></li>
+        <li><a href="/devicestatus"><i class="fas fa-server"></i> Device Status</a></li>
+    </ul>
 </div>
 
 <!-- ===== MAIN ===== -->
 <div class="main">
-
 <!-- NAVBAR -->
-<nav class="navbar shadow-sm mb-3 p-2">
-    <div class="d-flex align-items-center gap-3">
-
-        <img src="{{ url_for('static', filename='logo.png') }}" height="60">
-
+<nav class="navbar">
+    <div class="navbar-content">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="Logo">
         <div>
             <div class="title-glow">Fatigue Monitoring System</div>
-            <div class="subtitle">Dashboard Monitoring</div>
+            <div class="subtitle">Real-time PID Alert Validation</div>
         </div>
-
     </div>
 </nav>
 
-<div class="container mt-4">
-
-    <div class="title-glow mb-2">Cek PID Alert</div>
-    <div class="subtitle mb-3">Realtime fatigue validation system</div>
-
-    <!-- FORM -->
-    <div class="card p-4">
-        <form method="post">
-
-            <div class="mb-3">
-                <label>Paste Screenshot (Ctrl + V)</label>
-                <div id="pasteArea">Paste image here...</div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            
+            <div class="mb-4">
+                <h1 class="page-title">Cek PID Alert</h1>
+                <p class="page-subtitle">AI-powered realtime fatigue validation system</p>
             </div>
 
-            <div class="mb-3">
-                <label>Select Site</label>
-                <select name="site" class="form-select">
-                    <option value="brcb">BRCB</option>
-                    <option value="brcg">BRCG</option>
-                </select>
+            <!-- FORM CARD -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-image me-2"></i>Paste Screenshot (Ctrl + V)
+                            </label>
+                            <div id="pasteArea" tabindex="0">
+                                <i class="fas fa-paste paste-icon"></i>
+                                <div>Paste image here or drag & drop</div>
+                                <small class="text-muted">Supports PNG, JPG, WebP</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-building me-2"></i>Select Site
+                            </label>
+                            <select name="site" class="form-select">
+                                <option value="brcb">BRCB</option>
+                                <option value="brcg">BRCG</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-terminal me-2"></i>Input PID Alert
+                            </label>
+                            <textarea name="raw" id="rawInput" class="form-control" rows="6" placeholder="Paste atau ketik PID alert data disini..."></textarea>
+                        </div>
+
+                        <div class="d-flex gap-3 flex-wrap">
+                            <button class="btn btn-primary px-5" type="submit">
+                                <i class="fas fa-rocket me-2"></i>EXECUTE
+                            </button>
+                            <button type="button" class="btn btn-outline-primary px-4" 
+                                onclick="clearForm()">
+                                <i class="fas fa-trash me-2"></i>CLEAR
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <div class="mb-2">
-                <label>Input PID Alert</label>
-                <textarea name="raw" id="rawInput" class="form-control" rows="6"></textarea>
-            </div>
-
-            <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-primary px-4">EXECUTE</button>
-                <button type="button" class="btn btn-outline-light"
-                    onclick="document.getElementById('rawInput').value=''">CLEAR</button>
-            </div>
-
-        </form>
-    </div>
-
-    {% if hasil %}
-    <div class="card mt-4 p-4">
-
-        <button class="btn btn-primary btn-sm mb-3" onclick="copySelectedColumns()">
-            Copy Time Data
-        </button>
-
-        <div class="table-responsive">
-            <table class="table text-center align-middle">
-                <thead>
-                    <tr>
-                        <th>PID</th>
-                        <th>UNIT</th>
-                        <th>ALERT</th>
-                        <th>TIME ALERT</th>
-                        <th>BEDMS</th>
-                        <th>LTIME</th>
-                        <th>STATUS</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                {% for r in hasil %}
-                <tr>
-                    <td>{{ r[0] }}</td>
-                    <td>{{ r[1] }}</td>
-                    <td>{{ r[2] }}</td>
-                    <td>{{ r[3] }}</td>
-                    <td>{{ r[4] }}</td>
-
-                    <td class="
-                        {% if '0m' in r[5] %} ltime-good
-                        {% elif '1m' in r[5] %} ltime-mid
-                        {% else %} ltime-bad {% endif %}">
-                        {{ r[5] }}
-                    </td>
-
-                    <td>
-                        {% if r[6] == "TRUE" %}
-                            <span class="badge badge-true">TRUE</span>
-                        {% else %}
-                            <span class="badge badge-false">FALSE</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-
-            </table>
-        </div>
-
-    </div>
-    {% endif %}
-
-</div>
-</div>
-
-<script>
-// OCR
-document.getElementById("pasteArea").addEventListener("paste", async (event) => {
-    const items = event.clipboardData.items;
-
-    for (let item of items) {
-        if (item.type.indexOf("image") !== -1) {
-
-            const file = item.getAsFile();
-            const url = URL.createObjectURL(file);
-
-            const { data: { text } } = await Tesseract.recognize(url, 'eng');
-
-            let filtered = text.match(/[A-Z0-9\-_:]+/g);
-            document.getElementById("rawInput").value = filtered ? filtered.join("\n") : text;
-        }
-    }
-});
-
-// COPY
-function copySelectedColumns() {
-    let rows = document.querySelectorAll("tbody tr");
-    let result = [];
-
-    rows.forEach(row => {
-        let cells = row.querySelectorAll("td");
-
-        let timeAlert = cells[3]?.innerText.trim();
-        let bedms     = cells[4]?.innerText.trim();
-        let ltime     = cells[5]?.innerText.trim();
-
-        result.push(`${timeAlert}\t${bedms}\t${ltime}`);
-    });
-
-    navigator.clipboard.writeText(result.join("\n"));
-    alert("Copied Time Data!");
-}
-</script>
-
-</body>
-</html>
+            {% if hasil %}
+            <!-- RESULTS CARD -->
+            <div class="card mt-5">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-
